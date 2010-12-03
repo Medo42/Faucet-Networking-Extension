@@ -4,12 +4,13 @@
 #include <faucet/tcp/TcpClosed.h>
 
 #include <boost/bind.hpp>
+#include <boost/lexical_cast.hpp>
 
 using namespace boost::asio::ip;
 
 TcpSocket::TcpSocket(State initialState) :
-		socket_(ioService),
-		resolver_(ioService),
+		socket_(*ioService),
+		resolver_(*ioService),
 		state_(initialState),
 		errorMessage_() {
 }
@@ -31,11 +32,10 @@ const std::string &TcpSocket::getErrorMessage() {
 
 TcpSocket *TcpSocket::connectTo(const char *address, uint16_t port) {
 	TcpSocket *newSocket = new TcpSocket(TCPSOCK_CONNECTING);
-	tcp::resolver::query query(address, "");
+	tcp::resolver::query query(address, boost::lexical_cast<std::string>(port), tcp::resolver::query::numeric_service);
 	newSocket->resolver_.async_resolve(query, boost::bind(
 			&TcpSocket::handleResolve,
 			newSocket,
-			port,
 			boost::asio::placeholders::error,
 			boost::asio::placeholders::iterator));
 	return newSocket;
@@ -56,27 +56,29 @@ void TcpSocket::handleError(const boost::system::error_code &error) {
 	}
 }
 
-void TcpSocket::handleResolve(uint16_t port, const boost::system::error_code &error,
+void TcpSocket::handleResolve(const boost::system::error_code &error,
 		tcp::resolver::iterator endpointIterator) {
 	if(!error) {
 		boost::system::error_code hostNotFound = boost::asio::error::host_not_found;
-		handleConnect(port, hostNotFound, endpointIterator);
+		handleConnect(hostNotFound, endpointIterator);
 	} else {
 		handleError(error);
 	}
 }
 
-void TcpSocket::handleConnect(uint16_t port, const boost::system::error_code &error,
+void TcpSocket::handleConnect(const boost::system::error_code &error,
 		tcp::resolver::iterator endpointIterator) {
 	if(!error) {
 		state_ = TCPSOCK_CONNECTED;
 		// TODO attempt to send data that's already in the buffer
 	} else if(endpointIterator != tcp::resolver::iterator()) {
-		socket_.close();
+		boost::system::error_code closeError;
+		if(socket_.close(closeError)) {
+			handleError(closeError);
+		}
 		tcp::endpoint endpoint = *endpointIterator;
-		endpoint.port(port);
 		socket_.async_connect(endpoint,
-				boost::bind(&TcpSocket::handleConnect, this, port,
+				boost::bind(&TcpSocket::handleConnect, this,
 				boost::asio::placeholders::error, ++endpointIterator));
 	} else {
 		handleError(error);

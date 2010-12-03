@@ -1,7 +1,7 @@
 #include "TcpConnecting.h"
 
 TcpConnecting::TcpConnecting(const std::string &host, uint16_t port) :
-	resolver(ioService) {
+	resolver(*ioService) {
 }
 
 TcpConnecting::~TcpConnecting() {

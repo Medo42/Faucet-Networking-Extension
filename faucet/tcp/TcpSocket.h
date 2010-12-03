@@ -41,10 +41,10 @@ private:
 
 	TcpSocket(State initialState);
 	void handleError(const boost::system::error_code &err);
-	void handleResolve(uint16_t port, const boost::system::error_code &err,
+	void handleResolve(const boost::system::error_code &err,
 			tcp::resolver::iterator endpointIterator);
 
-	void handleConnect(uint16_t port, const boost::system::error_code &err,
+	void handleConnect(const boost::system::error_code &err,
 			tcp::resolver::iterator endpointIterator);
 
 };

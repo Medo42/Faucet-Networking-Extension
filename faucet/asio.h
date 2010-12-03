@@ -6,4 +6,4 @@
 
 // We only use one io_service and it's needed practically
 // everywhere that asio is included.
-extern boost::asio::io_service ioService;
+extern boost::asio::io_service *ioService;

@@ -3,21 +3,32 @@
 #include <faucet/HandleMap.hpp>
 #include <faucet/tcp/TcpSocket.h>
 
+#include <faucet/asio.h>
+
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
 HandlePool handlePool;
 HandleMap<Socket> socketHandles(&handlePool);
 
-DLLEXPORT double tcp_connect(char *host, double port) {
-	if(port>=65536 || port<0) {
-		return socketHandles.allocate(TcpSocket::error("Port number out of range"));
-	}
+static void handleIo() {
+	ioService->poll();
+	// TODO handle the potential exception/error propagated through from a handler
+	// It's a code bug if this happens, so we need to try getting debug info out.
+}
 
-	uint16_t intPort = (uint16_t)port;
-	return socketHandles.allocate(TcpSocket::connectTo(host, intPort));
+DLLEXPORT double tcp_connect(char *host, double port) {
+	TcpSocket *socket;
+	if(port>=65536 || port<0) {
+		socket = TcpSocket::error("Port number out of range");
+	} else {
+		uint16_t intPort = (uint16_t)port;
+		socket = TcpSocket::connectTo(host, intPort);
+	}
+	return socketHandles.allocate(socket);
 }
 
 DLLEXPORT double socket_connecting(double socketHandle) {
+	handleIo();
 	Socket *socket = socketHandles.find((uint32_t) socketHandle);
 	if(socket != 0) {
 		return socket->isConnecting();
@@ -27,6 +38,7 @@ DLLEXPORT double socket_connecting(double socketHandle) {
 }
 
 DLLEXPORT double socket_has_error(double socketHandle) {
+	handleIo();
 	Socket *socket = socketHandles.find((uint32_t) socketHandle);
 	if(socket != 0) {
 		return socket->hasError();
@@ -36,6 +48,7 @@ DLLEXPORT double socket_has_error(double socketHandle) {
 }
 
 DLLEXPORT const char *socket_error(double socketHandle) {
+	handleIo();
 	Socket *socket = socketHandles.find((uint32_t) socketHandle);
 	if(socket != 0) {
 		return socket->getErrorMessage().c_str();
@@ -51,5 +64,17 @@ DLLEXPORT double socket_destroy(double socketHandle, double immediately) {
 		delete socket;
 		socketHandles.release((uint32_t) socketHandle);
 	}
+	return 0;
+}
+
+DLLEXPORT double dllStartup() {
+	ioService = new boost::asio::io_service();
+	return 0;
+}
+
+
+DLLEXPORT double dllShutdown() {
+	ioService->stop();
+	delete ioService;
 	return 0;
 }
