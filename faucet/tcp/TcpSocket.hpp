@@ -1,5 +1,6 @@
 #pragma once
 #include <faucet/Socket.h>
+#include <faucet/Fallible.hpp>
 #include <faucet/asio.h>
 
 #include <boost/integer.hpp>
@@ -25,6 +26,11 @@ public:
 	 * Create an error socket with the given parameter as error message
 	 */
 	static TcpSocket *error(const std::string &message);
+
+	/**
+	 * Create a connected TcpSocket from an existing connected tcp::socket
+	 */
+	static TcpSocket *fromConnectedSocket(tcp::socket *connectedSocket);
 private:
 	enum State {
 		TCPSOCK_CONNECTING,
@@ -33,13 +39,15 @@ private:
 		TCPSOCK_FAILED
 	};
 
-	tcp::socket socket_;
+	tcp::socket *socket_;
 	tcp::resolver resolver_;
 
 	State state_;
 	std::string errorMessage_;
 
 	TcpSocket(State initialState);
+	TcpSocket(State initialState, tcp::socket *socket);
+
 	void handleError(const boost::system::error_code &err);
 	void handleResolve(const boost::system::error_code &err,
 			tcp::resolver::iterator endpointIterator);

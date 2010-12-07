@@ -1,12 +1,12 @@
 #pragma once
 
+#include <faucet/Fallible.hpp>
+
 #include <string>
 
-class Socket {
+class Socket : public Fallible {
 public:
 	virtual ~Socket(){};
 
 	virtual bool isConnecting() = 0;
-	virtual bool hasError() = 0;
-	virtual const std::string &getErrorMessage() = 0;
 };

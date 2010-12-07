@@ -1,7 +1,4 @@
-#include "TcpSocket.h"
-#include <faucet/tcp/TcpState.h>
-#include <faucet/tcp/TcpConnecting.h>
-#include <faucet/tcp/TcpClosed.h>
+#include "TcpSocket.hpp"
 
 #include <boost/bind.hpp>
 #include <boost/lexical_cast.hpp>
@@ -9,13 +6,21 @@
 using namespace boost::asio::ip;
 
 TcpSocket::TcpSocket(State initialState) :
-		socket_(*ioService),
+		socket_(new tcp::socket(*ioService)),
+		resolver_(*ioService),
+		state_(initialState),
+		errorMessage_() {
+}
+
+TcpSocket::TcpSocket(State initialState, tcp::socket *socket) :
+		socket_(socket),
 		resolver_(*ioService),
 		state_(initialState),
 		errorMessage_() {
 }
 
 TcpSocket::~TcpSocket() {
+	delete socket_;
 }
 
 bool TcpSocket::isConnecting() {
@@ -47,6 +52,10 @@ TcpSocket *TcpSocket::error(const std::string &message) {
 	return newSocket;
 }
 
+TcpSocket *TcpSocket::fromConnectedSocket(tcp::socket *connectedSocket) {
+	return new TcpSocket(TCPSOCK_CONNECTED, connectedSocket);
+}
+
 void TcpSocket::handleError(const boost::system::error_code &error) {
 	// Don't overwrite error info, subsequent errors might
 	// just be repercussions of the first one.
@@ -73,11 +82,11 @@ void TcpSocket::handleConnect(const boost::system::error_code &error,
 		// TODO attempt to send data that's already in the buffer
 	} else if(endpointIterator != tcp::resolver::iterator()) {
 		boost::system::error_code closeError;
-		if(socket_.close(closeError)) {
+		if(socket_->close(closeError)) {
 			handleError(closeError);
 		}
 		tcp::endpoint endpoint = *endpointIterator;
-		socket_.async_connect(endpoint,
+		socket_->async_connect(endpoint,
 				boost::bind(&TcpSocket::handleConnect, this,
 				boost::asio::placeholders::error, ++endpointIterator));
 	} else {
