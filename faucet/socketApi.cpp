@@ -21,8 +21,9 @@ static void handleIo() {
 
 DLLEXPORT double tcp_connect(char *host, double port) {
 	uint16_t intPort;
-	if(port>=65536 || port<0) {
-		intPort = 0; // Set an invalid port to generage an appropriate error;
+	if(port>=65536 || port<=0) {
+		boost::system::error_code error = boost::asio::error::make_error_code(boost::asio::error::invalid_argument);
+		return socketHandles.allocate(TcpSocket::error(error.message()));
 	} else {
 		intPort = (uint16_t)port;
 	}
@@ -41,8 +42,9 @@ DLLEXPORT double socket_connecting(double socketHandle) {
 
 DLLEXPORT double tcp_listen(double port) {
 	uint16_t intPort;
-	if(port>=65536 || port<0) {
-		intPort = 0; // TODO: 0 actually binds to an ephemeral port
+	if(port>=65536 || port<=0) {
+		boost::system::error_code error = boost::asio::error::make_error_code(boost::asio::error::invalid_argument);
+		return socketHandles.allocate(TcpSocket::error(error.message()));
 	} else {
 		intPort = (uint16_t)port;
 	}
