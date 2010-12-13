@@ -103,11 +103,14 @@ DLLEXPORT double socket_destroy(double socketHandle, double immediately) {
 	return 0;
 }
 
+DLLEXPORT double socket_destroy_graceful(double socketHandle) {
+	return socket_destroy(socketHandle, 0);
+}
+
 DLLEXPORT double dllStartup() {
 	ioService = new boost::asio::io_service();
 	return 0;
 }
-
 
 DLLEXPORT double dllShutdown() {
 	ioService->stop();
