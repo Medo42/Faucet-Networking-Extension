@@ -2,7 +2,7 @@
 #include <faucet/Socket.h>
 #include <faucet/Fallible.hpp>
 #include <faucet/asio.h>
-
+#include <faucet/SendBuffer.hpp>
 #include <boost/integer.hpp>
 #include <string>
 
@@ -15,6 +15,12 @@ public:
 	virtual bool isConnecting();
 	virtual const std::string &getErrorMessage();
 	virtual bool hasError();
+
+	template<typename PodType>
+	void writePod(const PodType &value) {
+		sendbuffer.push(value);
+		// TODO automatically send when the buffer exceeds a size limit (64k?)
+	}
 
 	/**
 	 * Create a new socket representing a connection to the
@@ -44,6 +50,8 @@ private:
 
 	State state_;
 	std::string errorMessage_;
+
+	SendBuffer sendbuffer;
 
 	TcpSocket(State initialState);
 	TcpSocket(State initialState, tcp::socket *socket);

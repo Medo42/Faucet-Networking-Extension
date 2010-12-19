@@ -9,8 +9,7 @@
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
 HandlePool handlePool;
-HandleMap<Socket> socketHandles(&handlePool);
-HandleMap<CombinedTcpAcceptor> acceptorHandles(&handlePool);
+HandleMap handles(&handlePool);
 
 static void handleIo() {
 	ioService->poll();
@@ -23,16 +22,16 @@ DLLEXPORT double tcp_connect(char *host, double port) {
 	uint16_t intPort;
 	if(port>=65536 || port<=0) {
 		boost::system::error_code error = boost::asio::error::make_error_code(boost::asio::error::invalid_argument);
-		return socketHandles.allocate(TcpSocket::error(error.message()));
+		return handles.allocate(TcpSocket::error(error.message()));
 	} else {
 		intPort = (uint16_t)port;
 	}
-	return socketHandles.allocate(TcpSocket::connectTo(host, intPort));
+	return handles.allocate(TcpSocket::connectTo(host, intPort));
 }
 
 DLLEXPORT double socket_connecting(double socketHandle) {
 	handleIo();
-	Socket *socket = socketHandles.find((uint32_t) socketHandle);
+	Socket *socket = handles.find<Socket>((uint32_t) socketHandle);
 	if(socket != 0) {
 		return socket->isConnecting();
 	} else {
@@ -44,67 +43,89 @@ DLLEXPORT double tcp_listen(double port) {
 	uint16_t intPort;
 	if(port>=65536 || port<=0) {
 		boost::system::error_code error = boost::asio::error::make_error_code(boost::asio::error::invalid_argument);
-		return socketHandles.allocate(TcpSocket::error(error.message()));
+		return handles.allocate(TcpSocket::error(error.message()));
 	} else {
 		intPort = (uint16_t)port;
 	}
-	return acceptorHandles.allocate(new CombinedTcpAcceptor(intPort));
+	return handles.allocate(new CombinedTcpAcceptor(intPort));
 }
 
 DLLEXPORT double socket_accept(double handle) {
-	CombinedTcpAcceptor *acceptor = acceptorHandles.find((uint32_t) handle);
+	CombinedTcpAcceptor *acceptor = handles.find<CombinedTcpAcceptor>((uint32_t) handle);
 	TcpSocket *accepted = acceptor->accept();
 	if(accepted != NULL) {
-		return socketHandles.allocate(accepted);
+		return handles.allocate(accepted);
 	} else {
 		return -1;
 	}
 }
 
-DLLEXPORT double socket_has_error(double socketHandle) {
+DLLEXPORT double socket_has_error(double handle) {
 	handleIo();
-	Socket *socket = socketHandles.find((uint32_t) socketHandle);
-	CombinedTcpAcceptor *acceptor = acceptorHandles.find((uint32_t) socketHandle);
+	Fallible *fallible = handles.find<Fallible>((uint32_t) handle);
 
-	if(socket != 0) {
-		return socket->hasError();
-	} else if(acceptor != 0) {
-		return acceptor->hasError();
+	if(fallible != 0) {
+		return fallible->hasError();
 	} else {
 		return true;
 	}
 }
 
-DLLEXPORT const char *socket_error(double socketHandle) {
+DLLEXPORT const char *socket_error(double handle) {
 	handleIo();
-	Socket *socket = socketHandles.find((uint32_t) socketHandle);
-	CombinedTcpAcceptor *acceptor = acceptorHandles.find((uint32_t) socketHandle);
+	Fallible *fallible = handles.find<Fallible>((uint32_t) handle);
 
-	if(socket != 0) {
-		return socket->getErrorMessage().c_str();
-	} else if(acceptor != 0) {
-		return acceptor->getErrorMessage().c_str();
+	if(fallible != 0) {
+		return fallible->getErrorMessage().c_str();
 	} else {
-		return "The socket handle is invalid.";
+		return "This handle is invalid.";
 	}
 }
 
-DLLEXPORT double socket_destroy(double socketHandle, double immediately) {
+DLLEXPORT double socket_destroy(double handle, double immediately) {
 	// TODO Handle graceful close
-	Socket *socket = socketHandles.find((uint32_t) socketHandle);
-	CombinedTcpAcceptor *acceptor = acceptorHandles.find((uint32_t) socketHandle);
-	if(socket != 0) {
-		delete socket;
-		socketHandles.release((uint32_t) socketHandle);
-	} else if(acceptor != 0) {
-		delete acceptor;
-		acceptorHandles.release((uint32_t) socketHandle);
+	Handled *handled = handles.find<Handled>((uint32_t) handle);
+	if(handled != 0) {
+		delete handled;
+		handles.release((uint32_t) handle);
 	}
 	return 0;
 }
 
 DLLEXPORT double socket_destroy_graceful(double socketHandle) {
 	return socket_destroy(socketHandle, 0);
+}
+
+template<typename ValueType>
+static void writeValue(double socketHandle, double value) {
+	TcpSocket *socket = handles.find<TcpSocket>((uint32_t) socketHandle);
+	if(socket != 0) {
+		socket->writePod(static_cast<ValueType>(value));
+	}
+}
+
+DLLEXPORT void write_ubyte(double socketHandle, double value) {
+	writeValue<uint8_t>(socketHandle, value);
+}
+
+DLLEXPORT void write_byte(double socketHandle, double value) {
+	writeValue<int8_t>(socketHandle, value);
+}
+
+DLLEXPORT void write_ushort(double socketHandle, double value) {
+	writeValue<uint16_t>(socketHandle, value);
+}
+
+DLLEXPORT void write_short(double socketHandle, double value) {
+	writeValue<int16_t>(socketHandle, value);
+}
+
+DLLEXPORT void write_uint(double socketHandle, double value) {
+	writeValue<uint32_t>(socketHandle, value);
+}
+
+DLLEXPORT void write_int(double socketHandle, double value) {
+	writeValue<int32_t>(socketHandle, value);
 }
 
 DLLEXPORT double dllStartup() {
