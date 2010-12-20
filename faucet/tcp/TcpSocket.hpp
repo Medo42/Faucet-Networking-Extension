@@ -16,11 +16,12 @@ public:
 	virtual const std::string &getErrorMessage();
 	virtual bool hasError();
 
-	template<typename PodType>
-	void writePod(const PodType &value) {
-		sendbuffer.push(value);
-		// TODO automatically send when the buffer exceeds a size limit (64k?)
-	}
+	void write(const uint8_t *buffer, size_t size);
+
+	size_t getSendbufferSize();
+	void setSendbufferLimit(size_t maxSize);
+
+	void send();
 
 	/**
 	 * Create a new socket representing a connection to the
@@ -51,16 +52,23 @@ private:
 	State state_;
 	std::string errorMessage_;
 
-	SendBuffer sendbuffer;
+	SendBuffer sendbuffer_;
+	size_t sendbufferSizeLimit_;
+
+	bool asyncSendInProgress_;
 
 	TcpSocket(State initialState);
-	TcpSocket(State initialState, tcp::socket *socket);
+	TcpSocket(tcp::socket *socket);
 
-	void handleError(const boost::system::error_code &err);
+	void disableNagle();
+
+	void handleError(const std::string &errorMessage);
 	void handleResolve(const boost::system::error_code &err,
 			tcp::resolver::iterator endpointIterator);
-
 	void handleConnect(const boost::system::error_code &err,
 			tcp::resolver::iterator endpointIterator);
 
+	void startAsyncSend();
+	void handleSend(const boost::system::error_code &err,
+			size_t bytesTransferred);
 };

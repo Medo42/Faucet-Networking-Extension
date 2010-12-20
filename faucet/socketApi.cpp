@@ -5,6 +5,7 @@
 #include <faucet/tcp/CombinedTcpAcceptor.hpp>
 
 #include <faucet/asio.h>
+#include <limits>
 
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
@@ -19,14 +20,12 @@ static void handleIo() {
 }
 
 DLLEXPORT double tcp_connect(char *host, double port) {
-	uint16_t intPort;
 	if(port>=65536 || port<=0) {
 		boost::system::error_code error = boost::asio::error::make_error_code(boost::asio::error::invalid_argument);
 		return handles.allocate(TcpSocket::error(error.message()));
 	} else {
-		intPort = (uint16_t)port;
+		return handles.allocate(TcpSocket::connectTo(host, (uint16_t)port));
 	}
-	return handles.allocate(TcpSocket::connectTo(host, intPort));
 }
 
 DLLEXPORT double socket_connecting(double socketHandle) {
@@ -97,35 +96,77 @@ DLLEXPORT double socket_destroy_graceful(double socketHandle) {
 }
 
 template<typename ValueType>
-static void writeValue(double socketHandle, double value) {
+static double writeValue(double socketHandle, double value) {
 	TcpSocket *socket = handles.find<TcpSocket>((uint32_t) socketHandle);
 	if(socket != 0) {
-		socket->writePod(static_cast<ValueType>(value));
+		ValueType converted = static_cast<ValueType>(value);
+		socket->write(reinterpret_cast<uint8_t *>(&converted), sizeof(ValueType));
+	}
+	return 0;
+}
+
+DLLEXPORT double write_ubyte(double socketHandle, double value) {
+	return writeValue<uint8_t>(socketHandle, value);
+}
+
+DLLEXPORT double write_byte(double socketHandle, double value) {
+	return writeValue<int8_t>(socketHandle, value);
+}
+
+DLLEXPORT double write_ushort(double socketHandle, double value) {
+	return writeValue<uint16_t>(socketHandle, value);
+}
+
+DLLEXPORT double write_short(double socketHandle, double value) {
+	return writeValue<int16_t>(socketHandle, value);
+}
+
+DLLEXPORT double write_uint(double socketHandle, double value) {
+	return writeValue<uint32_t>(socketHandle, value);
+}
+
+DLLEXPORT double write_int(double socketHandle, double value) {
+	return writeValue<int32_t>(socketHandle, value);
+}
+
+DLLEXPORT double write_string(double socketHandle, const char *str) {
+	TcpSocket *socket = handles.find<TcpSocket>((uint32_t) socketHandle);
+	if(socket != 0) {
+		size_t size = strlen(str);
+		socket->write(reinterpret_cast<const uint8_t *>(str), size);
+	}
+	return 0;
+}
+
+DLLEXPORT double socket_send(double socketHandle) {
+	handleIo();
+	TcpSocket *socket = handles.find<TcpSocket>((uint32_t) socketHandle);
+	if(socket != 0) {
+		socket->send();
+	}
+	return 0;
+}
+
+DLLEXPORT double socket_sendbuffer_size(double socketHandle) {
+	handleIo();
+	TcpSocket *socket = handles.find<TcpSocket>((uint32_t) socketHandle);
+	if(socket != 0) {
+		return socket->getSendbufferSize();
+	} else {
+		return 0;
 	}
 }
 
-DLLEXPORT void write_ubyte(double socketHandle, double value) {
-	writeValue<uint8_t>(socketHandle, value);
-}
-
-DLLEXPORT void write_byte(double socketHandle, double value) {
-	writeValue<int8_t>(socketHandle, value);
-}
-
-DLLEXPORT void write_ushort(double socketHandle, double value) {
-	writeValue<uint16_t>(socketHandle, value);
-}
-
-DLLEXPORT void write_short(double socketHandle, double value) {
-	writeValue<int16_t>(socketHandle, value);
-}
-
-DLLEXPORT void write_uint(double socketHandle, double value) {
-	writeValue<uint32_t>(socketHandle, value);
-}
-
-DLLEXPORT void write_int(double socketHandle, double value) {
-	writeValue<int32_t>(socketHandle, value);
+DLLEXPORT double socket_sendbuffer_limit(double socketHandle, double sizeLimit) {
+	TcpSocket *socket = handles.find<TcpSocket>((uint32_t) socketHandle);
+	if(socket != 0) {
+		if(sizeLimit>0 && ((size_t)sizeLimit)>0) {
+			socket->setSendbufferLimit((size_t)sizeLimit);
+		} else {
+			socket->setSendbufferLimit(std::numeric_limits<size_t>::max());
+		}
+	}
+	return 0;
 }
 
 DLLEXPORT double dllStartup() {
