@@ -9,8 +9,7 @@
 
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
-HandlePool handlePool;
-HandleMap handles(&handlePool);
+HandleMap handles;
 
 static void handleIo() {
 	ioService->poll();
