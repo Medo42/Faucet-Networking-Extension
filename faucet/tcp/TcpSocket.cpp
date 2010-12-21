@@ -7,8 +7,8 @@
 using namespace boost::asio::ip;
 
 TcpSocket::TcpSocket(State initialState) :
-		socket_(new tcp::socket(*ioService)),
-		resolver_(*ioService),
+		socket_(new tcp::socket(Asio::getIoService())),
+		resolver_(Asio::getIoService()),
 		state_(initialState),
 		errorMessage_(),
 		sendbufferSizeLimit_(std::numeric_limits<size_t>::max()),
@@ -17,7 +17,7 @@ TcpSocket::TcpSocket(State initialState) :
 
 TcpSocket::TcpSocket(tcp::socket *connectedSocket) :
 		socket_(connectedSocket),
-		resolver_(*ioService),
+		resolver_(Asio::getIoService()),
 		state_(TCPSOCK_CONNECTED),
 		errorMessage_(),
 		sendbufferSizeLimit_(std::numeric_limits<size_t>::max()),

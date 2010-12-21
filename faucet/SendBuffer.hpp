@@ -1,7 +1,7 @@
 #pragma once
 
+#include <faucet/Asio.hpp>
 #include <boost/integer.hpp>
-#include <boost/asio.hpp>
 #include <vector>
 #include <cstdlib>
 

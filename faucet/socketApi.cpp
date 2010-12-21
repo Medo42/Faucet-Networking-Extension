@@ -1,10 +1,9 @@
-#include <boost/integer.hpp>
-
+#include <faucet/Asio.hpp>
 #include <faucet/HandleMap.hpp>
 #include <faucet/tcp/TcpSocket.hpp>
 #include <faucet/tcp/CombinedTcpAcceptor.hpp>
 
-#include <faucet/asio.h>
+#include <boost/integer.hpp>
 #include <limits>
 
 #define DLLEXPORT extern "C" __declspec(dllexport)
@@ -12,7 +11,7 @@
 HandleMap handles;
 
 static void handleIo() {
-	ioService->poll();
+	Asio::getIoService().poll();
 	// TODO handle the potential exception/error propagated through from a handler
 	// It's a code bug if this happens, so we need to try getting debug info out.
 	// (Left unhandled like this the game will crash - but for now that's preferable to not noticing it)
@@ -168,13 +167,8 @@ DLLEXPORT double socket_sendbuffer_limit(double socketHandle, double sizeLimit) 
 	return 0;
 }
 
-DLLEXPORT double dllStartup() {
-	ioService = new boost::asio::io_service();
-	return 0;
-}
-
 DLLEXPORT double dllShutdown() {
-	ioService->stop();
-	delete ioService;
+	Asio::getIoService().stop();
+	Asio::destroyIoService();
 	return 0;
 }

@@ -11,7 +11,9 @@ CombinedTcpAcceptor::CombinedTcpAcceptor(uint16_t port) :
 CombinedTcpAcceptor::~CombinedTcpAcceptor() {}
 
 const std::string &CombinedTcpAcceptor::getErrorMessage() {
-	return "IPv4: "+v4Acceptor_.getErrorMessage()+"; IPv6: "+v6Acceptor_.getErrorMessage();
+	static std::string message;
+	message = "IPv4: "+v4Acceptor_.getErrorMessage()+"; IPv6: "+v6Acceptor_.getErrorMessage();
+	return message;
 }
 
 bool CombinedTcpAcceptor::hasError() {

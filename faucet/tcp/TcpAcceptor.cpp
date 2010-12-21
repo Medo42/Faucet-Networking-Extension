@@ -5,8 +5,8 @@
 using namespace boost::asio::ip;
 
 TcpAcceptor::TcpAcceptor(const tcp::endpoint &endpoint) :
-		acceptor_(*ioService),
-		socket_(new tcp::socket(*ioService)),
+		acceptor_(Asio::getIoService()),
+		socket_(new tcp::socket(Asio::getIoService())),
 		socketIsConnected_(false),
 		hasError_(false),
 		errorMessage_() {
@@ -43,7 +43,7 @@ TcpSocket *TcpAcceptor::accept() {
 	if(socketIsConnected_) {
 		// Ownership of the socket transfers to the TcpSocket
 		TcpSocket *tcpSocket = TcpSocket::fromConnectedSocket(socket_);
-		socket_ = new tcp::socket(*ioService);
+		socket_ = new tcp::socket(Asio::getIoService());
 		socketIsConnected_ = false;
 		acceptor_.async_accept(*socket_, boost::bind(
 				&TcpAcceptor::handleAccept,
