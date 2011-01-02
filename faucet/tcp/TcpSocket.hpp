@@ -1,14 +1,15 @@
 #pragma once
 #include <faucet/Socket.h>
 #include <faucet/Fallible.hpp>
+#include <faucet/Writable.hpp>
 #include <faucet/Asio.hpp>
-#include <faucet/SendBuffer.hpp>
+#include <faucet/tcp/SendBuffer.hpp>
 #include <boost/integer.hpp>
 #include <string>
 
 using namespace boost::asio::ip;
 
-class TcpSocket : public Socket {
+class TcpSocket : public Socket, public Writable {
 public:
 	virtual ~TcpSocket();
 
