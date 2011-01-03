@@ -10,16 +10,16 @@
 
 class Buffer : public Handled, public Writable {
 	std::vector<uint8_t> data;
-	std::vector<uint8_t>::iterator readIterator;
+	size_t readIndex;
 public:
-	Buffer() : data(), readIterator(data.begin()) {}
+	Buffer() : data(), readIndex(0) {}
 
 	/**
 	 * Empty the buffer.
 	 */
 	void clear() {
 		data.clear();
-		readIterator = data.begin();
+		readIndex = 0;
 	}
 
 	/**
@@ -33,7 +33,7 @@ public:
 	 * Return the number of bytes still remaining to be read.
 	 */
 	size_t bytesRemaining() const {
-		return data.end()-readIterator;
+		return size()-readIndex;
 	}
 
 	/**
@@ -41,9 +41,9 @@ public:
 	 */
 	void setReadpos(size_t pos) {
 		if(pos<=data.size()) {
-			readIterator = data.begin()+pos;
+			readIndex = pos;
 		} else {
-			readIterator = data.end();
+			readIndex = size();
 		}
 	}
 
@@ -63,8 +63,8 @@ public:
 	 */
 	size_t read(uint8_t* out, size_t size) {
 		size = std::min(size, bytesRemaining());
-		std::copy(readIterator, readIterator+size, out);
-		readIterator += size;
+		memcpy(out, data.data()+readIndex, size);
+		readIndex += size;
 		return size;
 	}
 
@@ -107,12 +107,13 @@ public:
 	 * Deleting the pointer is the caller's responsibility.
 	 */
 	char *readString() {
+		std::vector<uint8_t>::iterator readIterator = data.begin()+readIndex;
 		size_t len = std::find(readIterator, data.end(), 0) - readIterator;
 		char *result = readString(len);
 
 		// Remove the separator too, unless we just read the entire buffer
-		if(readIterator != data.end()) {
-			++readIterator;
+		if(readIndex < size()) {
+			++readIndex;
 		}
 		return result;
 	}
