@@ -4,6 +4,7 @@
 #include <faucet/Writable.hpp>
 #include <faucet/Asio.hpp>
 #include <faucet/tcp/SendBuffer.hpp>
+#include <faucet/Buffer.hpp>
 #include <boost/integer.hpp>
 #include <string>
 
@@ -23,6 +24,13 @@ public:
 	void setSendbufferLimit(size_t maxSize);
 
 	void send();
+	/**
+	 * Try to receive the given number of bytes.
+	 *
+	 * Returns either a buffer with the requested ammount of data,
+	 * or null if the request can't be immediately fulfilled.
+	 */
+	Buffer *receive(size_t ammount);
 
 	/**
 	 * Create a new socket representing a connection to the
@@ -55,8 +63,10 @@ private:
 
 	SendBuffer sendbuffer_;
 	size_t sendbufferSizeLimit_;
-
 	bool asyncSendInProgress_;
+
+	std::vector<uint8_t> receiveBuffer_;
+	bool asyncReceiveInProgress_;
 
 	TcpSocket(State initialState);
 	TcpSocket(tcp::socket *socket);
