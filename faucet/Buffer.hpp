@@ -7,6 +7,7 @@
 #include <vector>
 #include <string>
 #include <algorithm>
+#include <cstring>
 
 class Buffer : public Handled, public Writable {
 	std::vector<uint8_t> data;

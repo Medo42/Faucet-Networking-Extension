@@ -80,6 +80,10 @@ private:
 			tcp::resolver::iterator endpointIterator);
 
 	void startAsyncSend();
+	void startAsyncReceive(size_t ammount);
+
 	void handleSend(const boost::system::error_code &err,
+			size_t bytesTransferred);
+	void handleReceive(const boost::system::error_code &err,
 			size_t bytesTransferred);
 };

@@ -73,9 +73,9 @@ Buffer *TcpSocket::receive(size_t ammount) {
 			size_t remaining = ammount - receiveBuffer_.size();
 			size_t available = socket_->available();
 			if(available >= remaining) {
-					size_t recvBufferEndIndex = receiveBuffer_.size();
-					receiveBuffer_.insert(receiveBuffer_.end(), remaining, 0);
-					boost::asio::read(*socket_, boost::asio::buffer(receiveBuffer_.data()+recvBufferEndIndex, remaining));
+				size_t recvBufferEndIndex = receiveBuffer_.size();
+				receiveBuffer_.insert(receiveBuffer_.end(), remaining, 0);
+				boost::asio::read(*socket_, boost::asio::buffer(receiveBuffer_.data()+recvBufferEndIndex, remaining));
 			}
 		} catch(boost::system::system_error &e) {
 			handleError(e.code().message());
@@ -88,7 +88,8 @@ Buffer *TcpSocket::receive(size_t ammount) {
 		receiveBuffer_.erase(receiveBuffer_.begin(), receiveBuffer_.begin()+ammount);
 		return result;
 	} else {
-		// TODO: Start async read
+		size_t remaining = ammount - receiveBuffer_.size();
+		startAsyncReceive(remaining);
 		return 0;
 	}
 }
@@ -173,18 +174,6 @@ void TcpSocket::handleConnect(const boost::system::error_code &error,
 	}
 }
 
-void TcpSocket::handleSend(const boost::system::error_code &error,
-		size_t bytesTransferred) {
-	asyncSendInProgress_ = false;
-	if(!error) {
-		sendbuffer_.pop(bytesTransferred);
-		if(sendbuffer_.committedSize() > 0) {
-			startAsyncSend();
-		}
-	} else {
-		handleError(error.message());
-	}
-}
 void TcpSocket::startAsyncSend() {
 	if(!asyncSendInProgress_) {
 		asyncSendInProgress_ = true;
@@ -197,6 +186,42 @@ void TcpSocket::startAsyncSend() {
 	}
 }
 
+void TcpSocket::startAsyncReceive(size_t ammount) {
+	if(!asyncReceiveInProgress_) {
+		asyncReceiveInProgress_ = true;
+
+		size_t recvBufferEndIndex = receiveBuffer_.size();
+		receiveBuffer_.insert(receiveBuffer_.end(), ammount, 0);
+		boost::asio::async_read(*socket_, boost::asio::buffer(receiveBuffer_.data()+recvBufferEndIndex, ammount),
+				boost::bind(
+						&TcpSocket::handleReceive,
+						this,
+						boost::asio::placeholders::error,
+						boost::asio::placeholders::bytes_transferred));
+	}
+}
+
+void TcpSocket::handleSend(const boost::system::error_code &error,
+		size_t bytesTransferred) {
+	asyncSendInProgress_ = false;
+	if(!error) {
+		sendbuffer_.pop(bytesTransferred);
+		if(sendbuffer_.committedSize() > 0) {
+			startAsyncSend();
+		}
+	} else {
+		handleError(error.message());
+	}
+}
+
+void TcpSocket::handleReceive(const boost::system::error_code &error,
+		size_t bytesTransferred) {
+	asyncReceiveInProgress_ = false;
+	if(error) {
+		handleError(error.message());
+	}
+}
+
 void TcpSocket::disableNagle() {
 	try {
 		tcp::no_delay nodelay(true);
@@ -205,4 +230,3 @@ void TcpSocket::disableNagle() {
 		handleError(error.code().message());
 	}
 }
-
