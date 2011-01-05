@@ -1,16 +1,17 @@
 #pragma once
 #include <faucet/Socket.h>
-#include <faucet/Fallible.hpp>
 #include <faucet/Writable.hpp>
 #include <faucet/Asio.hpp>
 #include <faucet/tcp/SendBuffer.hpp>
 #include <faucet/Buffer.hpp>
 #include <boost/integer.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 #include <string>
 
 using namespace boost::asio::ip;
 
-class TcpSocket : public Socket, public Writable {
+class TcpSocket : public Socket, public Writable, public boost::enable_shared_from_this<TcpSocket> {
 public:
 	virtual ~TcpSocket();
 
@@ -33,24 +34,37 @@ public:
 	Buffer *receive(size_t ammount);
 
 	/**
+	 * Read as much data as is available.
+	 */
+	Buffer *receive();
+
+	/**
+	 * True if the connection has been closed in the receiving direction.
+	 */
+	bool isEof();
+
+	void disconnect(bool hard);
+
+	/**
 	 * Create a new socket representing a connection to the
 	 * given host and port.
 	 */
-	static TcpSocket *connectTo(const char *numericAddress, uint16_t port);
+	static boost::shared_ptr<TcpSocket> connectTo(const char *numericAddress, uint16_t port);
 
 	/**
 	 * Create an error socket with the given parameter as error message
 	 */
-	static TcpSocket *error(const std::string &message);
+	static boost::shared_ptr<TcpSocket> error(const std::string &message);
 
 	/**
 	 * Create a connected TcpSocket from an existing connected tcp::socket
 	 */
-	static TcpSocket *fromConnectedSocket(tcp::socket *connectedSocket);
+	static boost::shared_ptr<TcpSocket> fromConnectedSocket(tcp::socket *connectedSocket);
 private:
 	enum State {
 		TCPSOCK_CONNECTING,
 		TCPSOCK_CONNECTED,
+		TCPSOCK_CLOSING,
 		TCPSOCK_CLOSED,
 		TCPSOCK_FAILED
 	};
@@ -72,6 +86,8 @@ private:
 	TcpSocket(tcp::socket *socket);
 
 	void disableNagle();
+	void nonblockReceiveAvailable();
+	Buffer *bufferFromReceiveBuffer();
 
 	void handleError(const std::string &errorMessage);
 	void handleResolve(const boost::system::error_code &err,

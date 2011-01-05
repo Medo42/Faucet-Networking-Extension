@@ -38,9 +38,10 @@ const std::string &TcpSocket::getErrorMessage() {
 }
 
 void TcpSocket::write(const uint8_t *buffer, size_t size) {
-	if(!hasError()) {
+	if(state_ == TCPSOCK_CONNECTED || state_ == TCPSOCK_CONNECTING) {
 		if(sendbuffer_.totalSize() + size > sendbufferSizeLimit_) {
 			handleError("The send buffer size limit was exceeded.");
+			return;
 		} else {
 			sendbuffer_.push(buffer, size);
 		}
@@ -56,29 +57,40 @@ void TcpSocket::setSendbufferLimit(size_t maxSize) {
 }
 
 void TcpSocket::send() {
-	sendbuffer_.commit();
-	if(state_ == TCPSOCK_CONNECTED) {
-		startAsyncSend();
+	if(state_ == TCPSOCK_CONNECTED || state_ == TCPSOCK_CONNECTING) {
+		sendbuffer_.commit();
+		if(state_ == TCPSOCK_CONNECTED) {
+			startAsyncSend();
+		}
 	}
 }
 
+/**
+ * @throws
+ */
+void TcpSocket::nonblockReceiveAvailable() {
+	if(asyncReceiveInProgress_ || state_ != TCPSOCK_CONNECTED) {
+		return;
+	}
+
+	size_t available = socket_->available();
+	size_t recvBufferEndIndex = receiveBuffer_.size();
+	receiveBuffer_.insert(receiveBuffer_.end(), available, 0);
+	boost::asio::read(*socket_, boost::asio::buffer(receiveBuffer_.data()+recvBufferEndIndex, available));
+}
+
 Buffer *TcpSocket::receive(size_t ammount) {
-	if(asyncReceiveInProgress_ || hasError()) {
+	if(asyncReceiveInProgress_ || state_ != TCPSOCK_CONNECTED) {
 		return 0;
 	}
 
 	if(receiveBuffer_.size() < ammount) {
 		// Try to satisfy the request with a nonblocking read
 		try {
-			size_t remaining = ammount - receiveBuffer_.size();
-			size_t available = socket_->available();
-			if(available >= remaining) {
-				size_t recvBufferEndIndex = receiveBuffer_.size();
-				receiveBuffer_.insert(receiveBuffer_.end(), remaining, 0);
-				boost::asio::read(*socket_, boost::asio::buffer(receiveBuffer_.data()+recvBufferEndIndex, remaining));
-			}
+			nonblockReceiveAvailable();
 		} catch(boost::system::system_error &e) {
 			handleError(e.code().message());
+			return 0;
 		}
 	}
 
@@ -94,8 +106,80 @@ Buffer *TcpSocket::receive(size_t ammount) {
 	}
 }
 
-TcpSocket *TcpSocket::connectTo(const char *address, uint16_t port) {
-	TcpSocket *newSocket = new TcpSocket(TCPSOCK_CONNECTING);
+Buffer *TcpSocket::receive() {
+	Buffer *result = new Buffer();
+	if(asyncReceiveInProgress_ || state_ != TCPSOCK_CONNECTED) {
+		return result;
+	}
+
+	try {
+		nonblockReceiveAvailable();
+		result->write(receiveBuffer_.data(), receiveBuffer_.size());
+		receiveBuffer_.clear();
+	} catch(boost::system::system_error &e) {
+		handleError(e.code().message());
+	}
+	return result;
+}
+
+bool TcpSocket::isEof() {
+	switch(state_) {
+	case TCPSOCK_CONNECTING:
+		return false;
+	case TCPSOCK_CONNECTED:
+		if(receiveBuffer_.size()>0 || asyncReceiveInProgress_) {
+			return false;
+		}
+		try {
+			uint8_t nonsenseBuffer;
+			boost::asio::socket_base::non_blocking_io command(true);
+			socket_->io_control(command);
+			boost::system::error_code error;
+			socket_->receive(boost::asio::buffer(&nonsenseBuffer, 1), socket_->message_peek, error);
+			command = false;
+			socket_->io_control(command);
+			if(error == boost::asio::error::eof) {
+				return true;
+			} else if(error == boost::asio::error::would_block) {
+				return false;
+			} else if(error) {
+				throw boost::system::system_error(error);
+			} else {
+				return false;
+			}
+		} catch(boost::system::system_error &e) {
+			handleError(e.code().message());
+			return true;
+		}
+	default:
+		return true;
+	}
+}
+
+void TcpSocket::disconnect(bool hard) {
+	if(state_ == TCPSOCK_CONNECTED || state_ == TCPSOCK_CONNECTING) {
+		if(hard) {
+			if(socket_->is_open()) {
+				try {
+					boost::asio::socket_base::linger option(false, 0);
+					socket_->set_option(option);
+					socket_->shutdown(tcp::socket::shutdown_both);
+					socket_->close();
+				} catch(boost::system::system_error &e) {
+					handleError(e.code().message());
+					return;
+				}
+			}
+			state_ = TCPSOCK_CLOSED;
+		} else {
+			send();
+			state_ = TCPSOCK_CLOSING;
+		}
+	}
+}
+
+boost::shared_ptr<TcpSocket> TcpSocket::connectTo(const char *address, uint16_t port) {
+	boost::shared_ptr<TcpSocket> newSocket(new TcpSocket(TCPSOCK_CONNECTING));
 	if(!newSocket->hasError()) {
 		tcp::resolver::query query(address, boost::lexical_cast<std::string>(port), tcp::resolver::query::numeric_service);
 		newSocket->resolver_.async_resolve(query, boost::bind(
@@ -107,14 +191,15 @@ TcpSocket *TcpSocket::connectTo(const char *address, uint16_t port) {
 	return newSocket;
 }
 
-TcpSocket *TcpSocket::error(const std::string &message) {
-	TcpSocket *newSocket = new TcpSocket(TCPSOCK_FAILED);
+boost::shared_ptr<TcpSocket> TcpSocket::error(const std::string &message) {
+	boost::shared_ptr<TcpSocket> newSocket(new TcpSocket(TCPSOCK_FAILED));
 	newSocket->errorMessage_ = message;
 	return newSocket;
 }
 
-TcpSocket *TcpSocket::fromConnectedSocket(tcp::socket *connectedSocket) {
-	return new TcpSocket(connectedSocket);
+boost::shared_ptr<TcpSocket> TcpSocket::fromConnectedSocket(tcp::socket *connectedSocket) {
+	boost::shared_ptr<TcpSocket> newSocket(new TcpSocket(connectedSocket));
+	return newSocket;
 }
 
 void TcpSocket::handleError(const std::string &errorMessage) {
@@ -123,7 +208,6 @@ void TcpSocket::handleError(const std::string &errorMessage) {
 	if(state_ != TCPSOCK_FAILED) {
 		state_ = TCPSOCK_FAILED;
 		errorMessage_ = errorMessage;
-
 	}
 
 	// Try to close the socket (abortive), ignoring any new errors
@@ -136,41 +220,53 @@ void TcpSocket::handleError(const std::string &errorMessage) {
 	}
 
 	// We won't send or receive anything anymore
+	// Clearing these should be safe, since closing the socket aborts all
+	// asynchronous operations immediately
 	sendbuffer_.clear();
 	receiveBuffer_.clear();
 }
 
 void TcpSocket::handleResolve(const boost::system::error_code &error,
 		tcp::resolver::iterator endpointIterator) {
-	if(!error) {
-		boost::system::error_code hostNotFound = boost::asio::error::host_not_found;
-		handleConnect(hostNotFound, endpointIterator);
-	} else {
-		handleError(error.message());
+	if(state_ == TCPSOCK_CONNECTING || state_ == TCPSOCK_CLOSING) {
+		if(!error) {
+			boost::system::error_code hostNotFound = boost::asio::error::host_not_found;
+			handleConnect(hostNotFound, endpointIterator);
+		} else {
+			handleError(error.message());
+		}
 	}
 }
 
 void TcpSocket::handleConnect(const boost::system::error_code &error,
 		tcp::resolver::iterator endpointIterator) {
-	if(!error) {
-		disableNagle();
-		if(!hasError()) {
-			state_ = TCPSOCK_CONNECTED;
-			if(sendbuffer_.committedSize() > 0) {
-				startAsyncSend();
+	if(state_ == TCPSOCK_CONNECTING || state_ == TCPSOCK_CLOSING) {
+		if(!error) {
+			disableNagle();
+			if(!hasError()) {
+				if(state_ == TCPSOCK_CONNECTING) {
+					state_ = TCPSOCK_CONNECTED;
+				}
+				if(sendbuffer_.committedSize() > 0) {
+					startAsyncSend();
+				} else if(state_ == TCPSOCK_CLOSING) {
+					socket_->close();
+					state_ = TCPSOCK_CLOSED;
+				}
 			}
+		} else if(endpointIterator != tcp::resolver::iterator()) {
+			boost::system::error_code closeError;
+			if(socket_->close(closeError)) {
+				handleError(closeError.message());
+				return;
+			}
+			tcp::endpoint endpoint = *endpointIterator;
+			socket_->async_connect(endpoint,
+					boost::bind(&TcpSocket::handleConnect, shared_from_this(),
+					boost::asio::placeholders::error, ++endpointIterator));
+		} else {
+			handleError(error.message());
 		}
-	} else if(endpointIterator != tcp::resolver::iterator()) {
-		boost::system::error_code closeError;
-		if(socket_->close(closeError)) {
-			handleError(closeError.message());
-		}
-		tcp::endpoint endpoint = *endpointIterator;
-		socket_->async_connect(endpoint,
-				boost::bind(&TcpSocket::handleConnect, this,
-				boost::asio::placeholders::error, ++endpointIterator));
-	} else {
-		handleError(error.message());
 	}
 }
 
@@ -180,7 +276,7 @@ void TcpSocket::startAsyncSend() {
 		socket_->async_write_some(sendbuffer_.committedAsConstBufferSequence(),
 				boost::bind(
 						&TcpSocket::handleSend,
-						this,
+						shared_from_this(),
 						boost::asio::placeholders::error,
 						boost::asio::placeholders::bytes_transferred));
 	}
@@ -195,7 +291,7 @@ void TcpSocket::startAsyncReceive(size_t ammount) {
 		boost::asio::async_read(*socket_, boost::asio::buffer(receiveBuffer_.data()+recvBufferEndIndex, ammount),
 				boost::bind(
 						&TcpSocket::handleReceive,
-						this,
+						shared_from_this(),
 						boost::asio::placeholders::error,
 						boost::asio::placeholders::bytes_transferred));
 	}
@@ -204,13 +300,18 @@ void TcpSocket::startAsyncReceive(size_t ammount) {
 void TcpSocket::handleSend(const boost::system::error_code &error,
 		size_t bytesTransferred) {
 	asyncSendInProgress_ = false;
-	if(!error) {
-		sendbuffer_.pop(bytesTransferred);
-		if(sendbuffer_.committedSize() > 0) {
-			startAsyncSend();
+	if(state_ == TCPSOCK_CONNECTED || state_ == TCPSOCK_CLOSING) {
+		if(!error) {
+			sendbuffer_.pop(bytesTransferred);
+			if(sendbuffer_.committedSize() > 0) {
+				startAsyncSend();
+			} else if(state_ == TCPSOCK_CLOSING) {
+				socket_->close();
+				state_ = TCPSOCK_CLOSED;
+			}
+		} else {
+			handleError(error.message());
 		}
-	} else {
-		handleError(error.message());
 	}
 }
 

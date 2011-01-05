@@ -1,24 +1,31 @@
 #pragma once
 
-#include "HandlePool.hpp"
 #include <faucet/Handled.hpp>
 
 #include <map>
 #include <boost/integer.hpp>
+#include <boost/shared_ptr.hpp>
 
 /**
  * Provides unique handles to objects and allows access by that handle.
- * The objects must extend the "Handled" class.
+ * The objects must extend the "Handled" class. Objects are handled and
+ * stored as shared_ptr references to allow flexible lifecycle management.
  */
 class HandleMap {
+	typedef boost::shared_ptr<Handled> HandledPtr;
 public:
 	HandleMap() {};
-	virtual ~HandleMap();
 
 	/**
 	 * Associate the element with a unique handle, which is returned.
 	 */
-	uint32_t allocate(Handled *element);
+	uint32_t allocate(HandledPtr element) {
+		while(content_.count(nextHandle_) > 0) {
+			nextHandle_++;
+		}
+		content_[nextHandle_] = element;
+		return nextHandle_++;
+	}
 
 	/**
 	 * Return the element associated with the given handle, or a NULL pointer
@@ -29,42 +36,49 @@ public:
 	 * previously been associated with NULL.
 	 */
 	template<typename RequestedType>
-	RequestedType *find(uint32_t handle);
+	boost::shared_ptr<RequestedType> find(uint32_t handle) {
+		std::map<uint32_t, HandledPtr>::iterator iter = content_.find(handle);
+		if(iter == content_.end()) {
+			return boost::shared_ptr<RequestedType>();
+		} else {
+			return boost::dynamic_pointer_cast<RequestedType>(iter->second);
+		}
+	}
+
+	/**
+	 * Convenience method for use from the Game Maker API which uses double for all numbers.
+	 * Returns a NULL pointer if the double value cannot be represented as uint32_t.
+	 */
+	template<typename RequestedType>
+	boost::shared_ptr<RequestedType> find(double handle) {
+		uint32_t intHandle = (uint32_t)handle;
+		if(intHandle == handle) {
+			return find<RequestedType>(intHandle);
+		} else {
+			return boost::shared_ptr<RequestedType>();
+		}
+	}
 
 	/**
 	 * Release the handle-element association.
 	 */
-	void release(uint32_t handle);
+	void release(uint32_t handle) {
+		content_.erase(handle);
+	};
 
+	/**
+	 * Convenience method for use from the Game Maker API which uses double for all numbers.
+	 * Does nothing if the double value cannot be represented as uint32_t
+	 */
+	void release(double handle) {
+		uint32_t intHandle = (uint32_t)handle;
+		if(intHandle == handle) {
+			release(intHandle);
+		} else {
+			return;
+		}
+	};
 private:
-	HandlePool handlePool_;
-	std::map<uint32_t, Handled *> content_;
+	uint32_t nextHandle_;
+	std::map<uint32_t, HandledPtr> content_;
 };
-
-HandleMap::~HandleMap() {
-	std::map<uint32_t, Handled *>::iterator iter = content_.begin();
-	for(;iter != content_.end(); ++iter) {
-		handlePool_.release(iter->first);
-	}
-}
-
-uint32_t HandleMap::allocate(Handled *element) {
-	uint32_t handle = handlePool_.allocate();
-	content_[handle] = element;
-	return handle;
-}
-
-template<typename RequestedType>
-RequestedType *HandleMap::find(uint32_t handle) {
-	std::map<uint32_t, Handled *>::iterator iter = content_.find(handle);
-	if(iter == content_.end()) {
-		return 0;
-	} else {
-		return dynamic_cast<RequestedType *>(iter->second);
-	}
-}
-
-void HandleMap::release(uint32_t handle) {
-	content_.erase(handle);
-	handlePool_.release(handle);
-}

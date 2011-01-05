@@ -23,8 +23,8 @@ public:
 	 * If a connection is waiting to be accepted, a socket to this
 	 * connection is returned. Otherwise a NULL pointer is returned.
 	 */
-	TcpSocket *accept();
+	boost::shared_ptr<TcpSocket> accept();
 private:
-	TcpAcceptor v4Acceptor_, v6Acceptor_;
+	boost::shared_ptr<TcpAcceptor> v4Acceptor_, v6Acceptor_;
 	bool checkV6First_;
 };

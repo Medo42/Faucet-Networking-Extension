@@ -4,27 +4,33 @@
 #include <boost/bind.hpp>
 using namespace boost::asio::ip;
 
-TcpAcceptor::TcpAcceptor(const tcp::endpoint &endpoint) :
+TcpAcceptor::TcpAcceptor() :
 		acceptor_(Asio::getIoService()),
 		socket_(new tcp::socket(Asio::getIoService())),
 		socketIsConnected_(false),
 		hasError_(false),
 		errorMessage_() {
-	try {
-		acceptor_.open(endpoint.protocol());
-		acceptor_.set_option(tcp::acceptor::reuse_address(true));
-		acceptor_.bind(endpoint);
-		acceptor_.listen();
+}
 
-		acceptor_.async_accept(*socket_, boost::bind(
+boost::shared_ptr<TcpAcceptor> TcpAcceptor::listen(const tcp::endpoint &endpoint) {
+	boost::shared_ptr<TcpAcceptor> result(new TcpAcceptor());
+	try {
+		result->acceptor_.open(endpoint.protocol());
+		result->acceptor_.set_option(tcp::acceptor::reuse_address(true));
+		result->acceptor_.bind(endpoint);
+		result->acceptor_.listen();
+
+		result->acceptor_.async_accept(*(result->socket_), boost::bind(
 				&TcpAcceptor::handleAccept,
-				this,
+				result,
 				boost::asio::placeholders::error));
 	} catch(boost::system::system_error &newErr) {
-		acceptor_.close();
-		hasError_ = true;
-		errorMessage_ = newErr.code().message();
+		boost::system::error_code error;
+		result->acceptor_.close(error);
+		result->hasError_ = true;
+		result->errorMessage_ = newErr.code().message();
 	}
+	return result;
 }
 
 TcpAcceptor::~TcpAcceptor() {
@@ -39,19 +45,19 @@ bool TcpAcceptor::hasError() {
 	return hasError_;
 }
 
-TcpSocket *TcpAcceptor::accept() {
+boost::shared_ptr<TcpSocket> TcpAcceptor::accept() {
 	if(socketIsConnected_) {
 		// Ownership of the socket transfers to the TcpSocket
-		TcpSocket *tcpSocket = TcpSocket::fromConnectedSocket(socket_);
+		boost::shared_ptr<TcpSocket> tcpSocket = TcpSocket::fromConnectedSocket(socket_);
 		socket_ = new tcp::socket(Asio::getIoService());
 		socketIsConnected_ = false;
 		acceptor_.async_accept(*socket_, boost::bind(
 				&TcpAcceptor::handleAccept,
-				this,
+				shared_from_this(),
 				boost::asio::placeholders::error));
 		return tcpSocket;
 	} else {
-		return NULL;
+		return boost::shared_ptr<TcpSocket>();
 	}
 }
 

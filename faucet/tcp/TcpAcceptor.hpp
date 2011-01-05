@@ -4,17 +4,15 @@
 #include <faucet/Fallible.hpp>
 
 #include <boost/integer.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/enable_shared_from_this.hpp>
 #include <string>
 
 class TcpSocket;
 
 using namespace boost::asio::ip;
-class TcpAcceptor : public Fallible {
+class TcpAcceptor : public boost::enable_shared_from_this<TcpAcceptor> {
 public:
-	/**
-	 * Create a new Acceptor that will listen at the given port.
-	 */
-	TcpAcceptor(const tcp::endpoint &endpoint);
 	virtual ~TcpAcceptor();
 
 	virtual const std::string &getErrorMessage();
@@ -24,8 +22,14 @@ public:
 	 * If a connection is waiting to be accepted, a socket to this
 	 * connection is returned. Otherwise a NULL pointer is returned.
 	 */
-	TcpSocket *accept();
+	boost::shared_ptr<TcpSocket> accept();
+
+	/**
+	 * Create a new Acceptor that will listen at the given port.
+	 */
+	static boost::shared_ptr<TcpAcceptor> listen(const tcp::endpoint &endpoint);
 private:
+	TcpAcceptor();
 	tcp::acceptor acceptor_;
 
 	/**

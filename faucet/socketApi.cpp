@@ -5,10 +5,13 @@
 #include <faucet/Buffer.hpp>
 
 #include <boost/integer.hpp>
+#include <boost/shared_ptr.hpp>
 #include <limits>
 
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
+typedef boost::shared_ptr<Buffer> BufferPtr;
+typedef boost::shared_ptr<CombinedTcpAcceptor> AcceptorPtr;
 HandleMap handles;
 
 static void handleIo() {
@@ -29,12 +32,12 @@ DLLEXPORT double tcp_connect(char *host, double port) {
 
 DLLEXPORT double socket_connecting(double socketHandle) {
 	handleIo();
-	Socket *socket = handles.find<Socket>((uint32_t) socketHandle);
-	if(socket != 0) {
+	boost::shared_ptr<Socket> socket = handles.find<Socket>(socketHandle);
+	if(socket) {
 		return socket->isConnecting();
 	} else {
 		return false;
-	}
+	};
 }
 
 DLLEXPORT double tcp_listen(double port) {
@@ -45,24 +48,28 @@ DLLEXPORT double tcp_listen(double port) {
 	} else {
 		intPort = (uint16_t)port;
 	}
-	return handles.allocate(new CombinedTcpAcceptor(intPort));
+
+	AcceptorPtr acceptor(new CombinedTcpAcceptor(intPort));
+	return handles.allocate(acceptor);
 }
 
 DLLEXPORT double socket_accept(double handle) {
-	CombinedTcpAcceptor *acceptor = handles.find<CombinedTcpAcceptor>((uint32_t) handle);
-	TcpSocket *accepted = acceptor->accept();
-	if(accepted != NULL) {
-		return handles.allocate(accepted);
-	} else {
-		return -1;
+	handleIo();	AcceptorPtr acceptor = handles.find<CombinedTcpAcceptor>(handle);
+	if(acceptor) {
+		boost::shared_ptr<Socket> accepted = acceptor->accept();
+
+		if(accepted) {
+			return handles.allocate(accepted);
+		}
 	}
+	return -1;
 }
 
 DLLEXPORT double socket_has_error(double handle) {
 	handleIo();
-	Fallible *fallible = handles.find<Fallible>((uint32_t) handle);
+	boost::shared_ptr<Fallible> fallible = handles.find<Fallible>(handle);
 
-	if(fallible != 0) {
+	if(fallible) {
 		return fallible->hasError();
 	} else {
 		return true;
@@ -71,22 +78,28 @@ DLLEXPORT double socket_has_error(double handle) {
 
 DLLEXPORT const char *socket_error(double handle) {
 	handleIo();
-	Fallible *fallible = handles.find<Fallible>((uint32_t) handle);
+	boost::shared_ptr<Fallible> fallible = handles.find<Fallible>(handle);
 
-	if(fallible != 0) {
+	if(fallible) {
 		return fallible->getErrorMessage().c_str();
 	} else {
 		return "This handle is invalid.";
 	}
 }
 
-DLLEXPORT double socket_destroy(double handle, double immediately) {
-	// TODO Handle graceful close
-	Handled *handled = handles.find<Handled>((uint32_t) handle);
-	if(handled != 0) {
-		delete handled;
-		handles.release((uint32_t) handle);
+DLLEXPORT double socket_destroy(double handle, double hard) {
+	boost::shared_ptr<TcpSocket> tcpSocket = handles.find<TcpSocket>(handle);
+	if(tcpSocket) {
+		tcpSocket->disconnect(hard != 0);
+		handles.release(handle);
+		return 0;
 	}
+
+	boost::shared_ptr<CombinedTcpAcceptor> acceptor = handles.find<CombinedTcpAcceptor>(handle);
+	if(acceptor) {
+		handles.release(handle);		return 0;
+	}
+
 	return 0;
 }
 
@@ -96,8 +109,8 @@ DLLEXPORT double socket_destroy_graceful(double socketHandle) {
 
 template<typename ValueType>
 static double writeValue(double handle, double value) {
-	Writable *writable = handles.find<Writable>((uint32_t) handle);
-	if(writable != 0) {
+	boost::shared_ptr<Writable> writable = handles.find<Writable>(handle);
+	if(writable) {
 		ValueType converted = static_cast<ValueType>(value);
 		writable->write(reinterpret_cast<uint8_t *>(&converted), sizeof(ValueType));
 	}
@@ -137,8 +150,8 @@ DLLEXPORT double write_double(double handle, double value) {
 }
 
 DLLEXPORT double write_string(double handle, const char *str) {
-	Writable *writable = handles.find<Writable>((uint32_t) handle);
-	if(writable != 0) {
+	boost::shared_ptr<Writable> writable = handles.find<Writable>(handle);
+	if(writable) {
 		size_t size = strlen(str);
 		writable->write(reinterpret_cast<const uint8_t *>(str), size);
 	}
@@ -146,9 +159,9 @@ DLLEXPORT double write_string(double handle, const char *str) {
 }
 
 DLLEXPORT double write_buffer(double destHandle, double bufferHandle) {
-	Writable *writable = handles.find<Writable>((uint32_t) destHandle);
-	Buffer *buffer = handles.find<Buffer>((uint32_t) bufferHandle);
-	if(writable != 0 && buffer != 0) {
+	boost::shared_ptr<Writable> writable = handles.find<Writable>(destHandle);
+	boost::shared_ptr<Buffer> buffer = handles.find<Buffer>(bufferHandle);
+	if(writable && buffer) {
 		writable->write(buffer->getData(), buffer->size());
 	}
 	return 0;
@@ -156,8 +169,8 @@ DLLEXPORT double write_buffer(double destHandle, double bufferHandle) {
 
 DLLEXPORT double socket_send(double socketHandle) {
 	handleIo();
-	TcpSocket *socket = handles.find<TcpSocket>((uint32_t) socketHandle);
-	if(socket != 0) {
+	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(socketHandle);
+	if(socket) {
 		socket->send();
 	}
 	return 0;
@@ -165,8 +178,8 @@ DLLEXPORT double socket_send(double socketHandle) {
 
 DLLEXPORT double socket_sendbuffer_size(double socketHandle) {
 	handleIo();
-	TcpSocket *socket = handles.find<TcpSocket>((uint32_t) socketHandle);
-	if(socket != 0) {
+	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(socketHandle);
+	if(socket) {
 		return socket->getSendbufferSize();
 	} else {
 		return 0;
@@ -174,8 +187,8 @@ DLLEXPORT double socket_sendbuffer_size(double socketHandle) {
 }
 
 DLLEXPORT double socket_sendbuffer_limit(double socketHandle, double sizeLimit) {
-	TcpSocket *socket = handles.find<TcpSocket>((uint32_t) socketHandle);
-	if(socket != 0) {
+	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(socketHandle);
+	if(socket) {
 		if(sizeLimit>0 && ((size_t)sizeLimit)>0) {
 			socket->setSendbufferLimit((size_t)sizeLimit);
 		} else {
@@ -196,29 +209,29 @@ DLLEXPORT double dllShutdown() {
  */
 
 DLLEXPORT double buffer_create() {
-	return handles.allocate(new Buffer());
+	BufferPtr newBuffer(new Buffer());
+	return handles.allocate(newBuffer);
 }
 
 DLLEXPORT double buffer_destroy(double handle) {
-	Buffer *buffer = handles.find<Buffer>((uint32_t) handle);
-	if(buffer != 0) {
-		handles.release((uint32_t) handle);
-		delete buffer;
+	BufferPtr buffer = handles.find<Buffer>(handle);
+	if(buffer) {
+		handles.release(handle);
 	}
 	return 0;
 }
 
 DLLEXPORT double buffer_clear(double handle) {
-	Buffer *buffer = handles.find<Buffer>((uint32_t) handle);
-	if(buffer != 0) {
+	BufferPtr buffer = handles.find<Buffer>(handle);
+	if(buffer) {
 		buffer->clear();
 	}
 	return 0;
 }
 
 DLLEXPORT double buffer_size(double handle) {
-	Buffer *buffer = handles.find<Buffer>((uint32_t) handle);
-	if(buffer != 0) {
+	BufferPtr buffer = handles.find<Buffer>(handle);
+	if(buffer) {
 		return buffer->size();
 	} else {
 		return 0;
@@ -226,8 +239,8 @@ DLLEXPORT double buffer_size(double handle) {
 }
 
 DLLEXPORT double buffer_bytes_left(double handle) {
-	Buffer *buffer = handles.find<Buffer>((uint32_t) handle);
-	if(buffer != 0) {
+	BufferPtr buffer = handles.find<Buffer>(handle);
+	if(buffer) {
 		return buffer->bytesRemaining();
 	} else {
 		return 0;
@@ -235,8 +248,8 @@ DLLEXPORT double buffer_bytes_left(double handle) {
 }
 
 DLLEXPORT double buffer_set_readpos(double handle, double newPos) {
-	Buffer *buffer = handles.find<Buffer>((uint32_t) handle);
-	if(buffer != 0) {
+	BufferPtr buffer = handles.find<Buffer>(handle);
+	if(buffer) {
 		size_t intNewPos;
 		if(newPos<0) {
 			intNewPos = 0;
@@ -252,8 +265,8 @@ DLLEXPORT double buffer_set_readpos(double handle, double newPos) {
 
 template <typename DesiredType>
 static double readValue(double handle) {
-	Buffer *buffer = handles.find<Buffer>((uint32_t) handle);
-	if(buffer != 0) {
+	BufferPtr buffer = handles.find<Buffer>(handle);
+	if(buffer) {
 		DesiredType value;
 		buffer->read(reinterpret_cast<uint8_t *>(&value), sizeof(DesiredType));
 		return static_cast<double>(value);
@@ -298,8 +311,8 @@ DLLEXPORT const char *read_string(double handle, double len) {
 	static char *stringbuf = 0;
 	delete stringbuf;
 
-	Buffer *buffer = handles.find<Buffer>((uint32_t) handle);
-	if(buffer != 0) {
+	BufferPtr buffer = handles.find<Buffer>(handle);
+	if(buffer) {
 		stringbuf = buffer->readString(len);
 		return stringbuf;
 	} else {
