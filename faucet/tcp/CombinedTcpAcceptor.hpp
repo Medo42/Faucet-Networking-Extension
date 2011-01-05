@@ -1,9 +1,11 @@
 #pragma once
 
 #include <faucet/Fallible.hpp>
-#include <faucet/tcp/TcpAcceptor.hpp>
-
 #include <boost/integer.hpp>
+#include <boost/shared_ptr.hpp>
+
+class TcpAcceptor;
+class TcpSocket;
 
 /**
  * This class combines two TcpAcceptors, one for IPv4 and once for IPv6.

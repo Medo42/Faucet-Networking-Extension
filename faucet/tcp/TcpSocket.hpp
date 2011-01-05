@@ -1,11 +1,12 @@
 #pragma once
-#include <faucet/Socket.h>
+#include <faucet/Socket.hpp>
 #include <faucet/Writable.hpp>
 #include <faucet/Asio.hpp>
 #include <faucet/tcp/SendBuffer.hpp>
 #include <faucet/Buffer.hpp>
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/scoped_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <string>
 
@@ -13,8 +14,6 @@ using namespace boost::asio::ip;
 
 class TcpSocket : public Socket, public Writable, public boost::enable_shared_from_this<TcpSocket> {
 public:
-	virtual ~TcpSocket();
-
 	virtual bool isConnecting();
 	virtual const std::string &getErrorMessage();
 	virtual bool hasError();
@@ -69,7 +68,7 @@ private:
 		TCPSOCK_FAILED
 	};
 
-	tcp::socket *socket_;
+	boost::scoped_ptr<tcp::socket> socket_;
 	tcp::resolver resolver_;
 
 	State state_;

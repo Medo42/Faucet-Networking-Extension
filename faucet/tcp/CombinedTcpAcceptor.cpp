@@ -1,4 +1,5 @@
 #include "CombinedTcpAcceptor.hpp"
+#include <faucet/tcp/TcpAcceptor.hpp>
 
 using namespace boost::asio::ip;
 

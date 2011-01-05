@@ -21,10 +21,6 @@ TcpSocket::TcpSocket(tcp::socket *connectedSocket) :
 	disableNagle();
 }
 
-TcpSocket::~TcpSocket() {
-	delete socket_;
-}
-
 bool TcpSocket::isConnecting() {
 	return state_ == TCPSOCK_CONNECTING;
 }
