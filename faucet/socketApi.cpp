@@ -37,7 +37,7 @@ DLLEXPORT double socket_connecting(double socketHandle) {
 		return socket->isConnecting();
 	} else {
 		return false;
-	};
+	}
 }
 
 DLLEXPORT double tcp_listen(double port) {
@@ -100,11 +100,8 @@ DLLEXPORT double socket_destroy(double handle, double hard) {
 		handles.release(handle);		return 0;
 	}
 
+	handleIo();
 	return 0;
-}
-
-DLLEXPORT double socket_destroy_graceful(double socketHandle) {
-	return socket_destroy(socketHandle, 0);
 }
 
 template<typename ValueType>
@@ -165,6 +162,48 @@ DLLEXPORT double write_buffer(double destHandle, double bufferHandle) {
 		writable->write(buffer->getData(), buffer->size());
 	}
 	return 0;
+}
+
+DLLEXPORT double tcp_receive(double socketHandle, double size) {
+	handleIo();
+	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(socketHandle);
+	if(socket) {
+		size_t intSize;
+		if(size>0) {
+			intSize = (size_t) size;
+		} else {
+			return -1;
+		}
+		BufferPtr result = socket->receive(intSize);
+		if(result) {
+			return handles.allocate(result);
+		} else {
+			return -1;
+		}
+	} else {
+		return -1;
+	}
+}
+
+DLLEXPORT double tcp_receive_available(double socketHandle) {
+	handleIo();
+	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(socketHandle);
+	if(socket) {
+		return handles.allocate(socket->receive());
+	} else {
+		BufferPtr result(new Buffer());
+		return handles.allocate(result);
+	}
+}
+
+DLLEXPORT double tcp_eof(double socketHandle) {
+	handleIo();
+	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(socketHandle);
+	if(socket) {
+		return socket->isEof();
+	} else {
+		return true;
+	}
 }
 
 DLLEXPORT double socket_send(double socketHandle) {
@@ -318,4 +357,13 @@ DLLEXPORT const char *read_string(double handle, double len) {
 	} else {
 		return "";
 	}
+}
+
+/**
+ * Generic functions
+ */
+
+DLLEXPORT double socket_handle_io() {
+	handleIo();
+	return 0;
 }

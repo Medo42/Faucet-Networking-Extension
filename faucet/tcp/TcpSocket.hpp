@@ -30,12 +30,12 @@ public:
 	 * Returns either a buffer with the requested ammount of data,
 	 * or null if the request can't be immediately fulfilled.
 	 */
-	Buffer *receive(size_t ammount);
+	boost::shared_ptr<Buffer> receive(size_t ammount);
 
 	/**
 	 * Read as much data as is available.
 	 */
-	Buffer *receive();
+	boost::shared_ptr<Buffer> receive();
 
 	/**
 	 * True if the connection has been closed in the receiving direction.

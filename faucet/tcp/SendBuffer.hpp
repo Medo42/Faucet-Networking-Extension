@@ -15,7 +15,12 @@ private:
 	size_t committedBytes;
 
 public:
-	SendBuffer() : firstElementIndex(0), freeSpaceInLastBuffer(0), committedBytes(0) {}
+	SendBuffer() :
+		buffers(),
+		firstElementIndex(0),
+		freeSpaceInLastBuffer(0),
+		endPtr(0),
+		committedBytes(0) {}
 
 	~SendBuffer() {
 		for(size_t i=0; i<buffers.size(); i++) {

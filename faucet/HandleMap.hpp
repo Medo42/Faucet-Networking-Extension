@@ -14,7 +14,7 @@
 class HandleMap {
 	typedef boost::shared_ptr<Handled> HandledPtr;
 public:
-	HandleMap() {};
+	HandleMap() : nextHandle_(0), content_() {}
 
 	/**
 	 * Associate the element with a unique handle, which is returned.
