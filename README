@@ -1,0 +1,46 @@
+This is the Faucet Networking Extension, a Game Maker extension for easy integration of
+networking into Game Maker games. It is distributed under the ISC license, which is short
+and simple enough that I don't have to explain it, just read the LICENSE file.
+
+
+Usage
+
+Currently, the user documentation is located here:
+https://docs.google.com/document/pub?id=1EAEu00nuiSuy3ZMS-ePPBsWu7evaZ5apk9CZaZhaj94
+
+
+Creating the extension from source
+
+To create the .gex extension file, you need the following steps:
+- Compile a .dll from the source code in the faucet directory
+- Create the .gex from the .dll
+
+
+Compiling the .dll
+
+For building the .dll I recommend using MinGW, because that's what I use myself
+(version 4.5.0). MSVC should work too, but has not been tested.
+
+This project requires the free Boost library, available from http://www.boost.org
+
+At this time no build script is provided, so start up your favourite IDE and set up
+the following rules:
+- all .cpp files in the faucet directory and subdirectories should be compiled
+  and then linked as a dll.
+- As include directories, you need to set up the Boost include dir as well as the project
+  directory itself (i.e. the directory containing this file)
+- Link statically with the mswsock and ws2_32 libraries, as well as the boost system library
+  (I used the mt-s variant). Also, statically link with the multithreading-safe standard library.
+  
+Please let me know if it worked, I set this up more or less by trial and error myself :P
+
+
+Creating the .gex
+
+For this task you need the GM Extension Maker, which you can download from
+http://www.yoyogames.com/make/extensions . Open the extension description file (faucetnet.ged)
+in the main project directory. You'll have to adapt it to work for you, so click on the 
+faucetNetworking.dll file and switch to the "Misc" tab. Change the "Original Name" to
+the pathname where your own .dll is located.
+
+Now you should be able to build the extension (File->Build Package...)
