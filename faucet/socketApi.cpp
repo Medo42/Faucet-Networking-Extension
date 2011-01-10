@@ -3,6 +3,7 @@
 #include <faucet/tcp/TcpSocket.hpp>
 #include <faucet/tcp/CombinedTcpAcceptor.hpp>
 #include <faucet/Buffer.hpp>
+#include <faucet/udp/UdpSender.hpp>
 
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
@@ -357,6 +358,20 @@ DLLEXPORT const char *read_string(double handle, double len) {
 	} else {
 		return "";
 	}
+}
+
+/**
+ * UDP
+ */
+
+DLLEXPORT double udp_send(double bufferHandle, const char *host, double port) {
+	static boost::shared_ptr<UdpSender> udpSender(new UdpSender());
+	BufferPtr buffer = handles.find<Buffer>(bufferHandle);
+
+	if(port<65536 && port>=1 && buffer) {
+		udpSender->send(buffer, host, static_cast<uint16_t>(port));
+	}
+	return 0;
 }
 
 /**
