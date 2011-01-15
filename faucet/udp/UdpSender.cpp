@@ -52,6 +52,7 @@ void UdpSender::handleResolve(const boost::system::error_code &error,
 	}
 }
 
+// TODO ipv4 first
 void UdpSender::handleSend(const boost::system::error_code &error,
 		udp::resolver::iterator endpointIterator,
 		boost::shared_ptr<UdpMessage> message) {
