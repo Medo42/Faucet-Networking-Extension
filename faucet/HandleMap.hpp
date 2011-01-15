@@ -5,22 +5,29 @@
 #include <map>
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
+#include <boost/cast.hpp>
+
+using boost::numeric_cast;
+using boost::numeric::bad_numeric_cast;
 
 /**
  * Provides unique handles to objects and allows access by that handle.
  * The objects must extend the "Handled" class. Objects are handled and
  * stored as shared_ptr references to allow flexible lifecycle management.
+ *
+ * The handle 0 is never used, to prevent errors when users check for >0
+ * instead of >=0
  */
 class HandleMap {
 	typedef boost::shared_ptr<Handled> HandledPtr;
 public:
-	HandleMap() : nextHandle_(0), content_() {}
+	HandleMap() : nextHandle_(1), content_() {}
 
 	/**
 	 * Associate the element with a unique handle, which is returned.
 	 */
 	uint32_t allocate(HandledPtr element) {
-		while(content_.count(nextHandle_) > 0) {
+		while(content_.count(nextHandle_) > 0 || nextHandle_ == 0) {
 			nextHandle_++;
 		}
 		content_[nextHandle_] = element;
@@ -51,10 +58,12 @@ public:
 	 */
 	template<typename RequestedType>
 	boost::shared_ptr<RequestedType> find(double handle) {
-		uint32_t intHandle = (uint32_t)handle;
-		if(intHandle == handle) {
-			return find<RequestedType>(intHandle);
-		} else {
+		if(trunc(handle) != handle) {
+			return boost::shared_ptr<RequestedType>();
+		}
+		try {
+			return find<RequestedType>(numeric_cast<uint32_t>(handle));
+		} catch(bad_numeric_cast &e) {
 			return boost::shared_ptr<RequestedType>();
 		}
 	}
@@ -64,20 +73,26 @@ public:
 	 */
 	void release(uint32_t handle) {
 		content_.erase(handle);
-	};
+	}
 
 	/**
 	 * Convenience method for use from the Game Maker API which uses double for all numbers.
 	 * Does nothing if the double value cannot be represented as uint32_t
 	 */
 	void release(double handle) {
-		uint32_t intHandle = (uint32_t)handle;
-		if(intHandle == handle) {
-			release(intHandle);
-		} else {
+		if(trunc(handle) != handle) {
 			return;
 		}
-	};
+		try {
+			return release(numeric_cast<uint32_t>(handle));
+		} catch(bad_numeric_cast &e) {
+			return;
+		}
+	}
+
+	uint32_t size() {
+		return content_.size();
+	}
 private:
 	uint32_t nextHandle_;
 	std::map<uint32_t, HandledPtr> content_;
