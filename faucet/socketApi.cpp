@@ -4,6 +4,7 @@
 #include <faucet/tcp/CombinedTcpAcceptor.hpp>
 #include <faucet/Buffer.hpp>
 #include <faucet/udp/UdpSender.hpp>
+#include <faucet/clipped_cast.hpp>
 
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
@@ -18,17 +19,6 @@ using boost::numeric::bad_numeric_cast;
 typedef boost::shared_ptr<Buffer> BufferPtr;
 typedef boost::shared_ptr<CombinedTcpAcceptor> AcceptorPtr;
 HandleMap handles;
-
-template<typename ValueType>
-static ValueType convertClipped(double value) {
-	if(value <= std::numeric_limits<ValueType>::min()) {
-		return std::numeric_limits<ValueType>::min();
-	} else if(value >= std::numeric_limits<ValueType>::max()) {
-		return std::numeric_limits<ValueType>::max();
-	} else {
-		return static_cast<ValueType>(value);
-	}
-}
 
 static void handleIo() {
 	Asio::getIoService().poll();
@@ -112,20 +102,30 @@ DLLEXPORT const char *socket_error(double handle) {
 	}
 }
 
-DLLEXPORT double socket_destroy(double handle, double hard) {
+static void destroySocket(double handle, bool hard) {
 	boost::shared_ptr<TcpSocket> tcpSocket = handles.find<TcpSocket>(handle);
 	if(tcpSocket) {
 		tcpSocket->disconnect(hard);
 		handles.release(handle);
-		return 0;
+		return;
 	}
 
 	boost::shared_ptr<CombinedTcpAcceptor> acceptor = handles.find<CombinedTcpAcceptor>(handle);
 	if(acceptor) {
-		handles.release(handle);		return 0;
+		handles.release(handle);
+		return;
 	}
 
 	handleIo();
+}
+
+DLLEXPORT double socket_destroy(double handle) {
+	destroySocket(handle, false);
+	return 0;
+}
+
+DLLEXPORT double socket_destroy_abortive(double handle) {
+	destroySocket(handle, true);
 	return 0;
 }
 
@@ -139,10 +139,9 @@ DLLEXPORT double socket_destroy(double handle, double hard) {
  */
 template<typename IntType>
 static double writeIntValue(double handle, double value) {
-	boost::shared_ptr<Writable> writable = handles.find<Writable>(handle);
+	boost::shared_ptr<ReadWritable> writable = handles.find<ReadWritable>(handle);
 	if(writable) {
-		IntType converted = convertClipped<IntType>(round(value));
-		writable->write(reinterpret_cast<uint8_t *>(&converted), sizeof(converted));
+		writable->writeIntValue<IntType>(value);
 	}
 	return 0;
 }
@@ -172,24 +171,23 @@ DLLEXPORT double write_int(double handle, double value) {
 }
 
 DLLEXPORT double write_float(double handle, double value) {
-	boost::shared_ptr<Writable> writable = handles.find<Writable>(handle);
+	boost::shared_ptr<ReadWritable> writable = handles.find<ReadWritable>(handle);
 	if(writable) {
-		float converted = convertClipped<float>(value);
-		writable->write(reinterpret_cast<uint8_t *>(&converted), sizeof(converted));
+		writable->writeFloat(value);
 	}
 	return 0;
 }
 
 DLLEXPORT double write_double(double handle, double value) {
-	boost::shared_ptr<Writable> writable = handles.find<Writable>(handle);
+	boost::shared_ptr<ReadWritable> writable = handles.find<ReadWritable>(handle);
 	if(writable) {
-		writable->write(reinterpret_cast<uint8_t *>(&value), sizeof(value));
+		writable->writeDouble(value);
 	}
 	return 0;
 }
 
 DLLEXPORT double write_string(double handle, const char *str) {
-	boost::shared_ptr<Writable> writable = handles.find<Writable>(handle);
+	boost::shared_ptr<ReadWritable> writable = handles.find<ReadWritable>(handle);
 	if(writable) {
 		size_t size = strlen(str);
 		writable->write(reinterpret_cast<const uint8_t *>(str), size);
@@ -198,10 +196,14 @@ DLLEXPORT double write_string(double handle, const char *str) {
 }
 
 DLLEXPORT double write_buffer(double destHandle, double bufferHandle) {
-	boost::shared_ptr<Writable> writable = handles.find<Writable>(destHandle);
+	boost::shared_ptr<ReadWritable> writable = handles.find<ReadWritable>(destHandle);
 	boost::shared_ptr<Buffer> buffer = handles.find<Buffer>(bufferHandle);
+	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(bufferHandle);
+
 	if(writable && buffer) {
 		writable->write(buffer->getData(), buffer->size());
+	} else if(writable && socket) {
+		writable->write(socket->getReceiveBuffer().getData(), socket->getReceiveBuffer().size());
 	}
 	return 0;
 }
@@ -214,16 +216,11 @@ DLLEXPORT double tcp_receive(double socketHandle, double size) {
 		try {
 			intSize = numeric_cast<size_t>(size);
 		} catch(bad_numeric_cast &e) {
-			return -1;
+			return false;
 		}
-		BufferPtr result = socket->receive(intSize);
-		if(result) {
-			return handles.allocate(result);
-		} else {
-			return -1;
-		}
+		return socket->receive(intSize);
 	} else {
-		return -1;
+		return false;
 	}
 }
 
@@ -231,10 +228,9 @@ DLLEXPORT double tcp_receive_available(double socketHandle) {
 	handleIo();
 	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(socketHandle);
 	if(socket) {
-		return handles.allocate(socket->receive());
+		return socket->receive();
 	} else {
-		BufferPtr result(new Buffer());
-		return handles.allocate(result);
+		return 0;
 	}
 }
 
@@ -267,10 +263,20 @@ DLLEXPORT double socket_sendbuffer_size(double socketHandle) {
 	}
 }
 
+DLLEXPORT double socket_receivebuffer_size(double socketHandle) {
+	handleIo();
+	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(socketHandle);
+	if(socket) {
+		return socket->getReceiveBuffer().size();
+	} else {
+		return 0;
+	}
+}
+
 DLLEXPORT double socket_sendbuffer_limit(double socketHandle, double sizeLimit) {
 	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(socketHandle);
 	if(socket) {
-		size_t intSize = convertClipped<size_t>(sizeLimit);
+		size_t intSize = clipped_cast<size_t>(sizeLimit);
 		if(intSize == 0) {
 			intSize = std::numeric_limits<size_t>::max();
 		}
@@ -331,18 +337,16 @@ DLLEXPORT double buffer_bytes_left(double handle) {
 DLLEXPORT double buffer_set_readpos(double handle, double newPos) {
 	BufferPtr buffer = handles.find<Buffer>(handle);
 	if(buffer) {
-		buffer->setReadpos(convertClipped<size_t>(newPos));
+		buffer->setReadpos(clipped_cast<size_t>(newPos));
 	}
 	return 0;
 }
 
 template <typename DesiredType>
 static double readValue(double handle) {
-	BufferPtr buffer = handles.find<Buffer>(handle);
-	if(buffer) {
-		DesiredType value;
-		buffer->read(reinterpret_cast<uint8_t *>(&value), sizeof(DesiredType));
-		return static_cast<double>(value);
+	boost::shared_ptr<ReadWritable> readWritable = handles.find<ReadWritable>(handle);
+	if(readWritable) {
+		return readWritable->readValue<DesiredType>();
 	} else {
 		return 0;
 	}
@@ -384,9 +388,9 @@ DLLEXPORT const char *read_string(double handle, double len) {
 	static char *stringbuf = 0;
 	delete stringbuf;
 
-	BufferPtr buffer = handles.find<Buffer>(handle);
-	if(buffer) {
-		stringbuf = buffer->readString(convertClipped<size_t>(len));
+	boost::shared_ptr<ReadWritable> readWritable = handles.find<ReadWritable>(handle);
+	if(readWritable) {
+		stringbuf = readWritable->readString(clipped_cast<size_t>(len));
 		return stringbuf;
 	} else {
 		return "";
@@ -425,4 +429,17 @@ DLLEXPORT double socket_handle_io() {
 
 DLLEXPORT double debug_handles() {
 	return handles.size();
+}
+
+DLLEXPORT double set_little_endian_global(double littleEndian) {
+	ReadWritable::setLittleEndianDefault(littleEndian);
+	return 0;
+}
+
+DLLEXPORT double set_little_endian(double handle, double littleEndian) {
+	boost::shared_ptr<ReadWritable> writable = handles.find<ReadWritable>(handle);
+	if(writable) {
+		writable->setLittleEndian(littleEndian);
+	}
+	return 0;
 }

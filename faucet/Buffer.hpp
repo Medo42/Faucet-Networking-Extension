@@ -1,7 +1,7 @@
 #pragma once
 
 #include <faucet/Handled.hpp>
-#include <faucet/Writable.hpp>
+#include <faucet/ReadWritable.hpp>
 
 #include <boost/integer.hpp>
 #include <vector>
@@ -9,7 +9,7 @@
 #include <algorithm>
 #include <cstring>
 
-class Buffer : public Handled, public Writable {
+class Buffer : public Handled, public ReadWritable {
 	std::vector<uint8_t> data;
 	size_t readIndex;
 public:
@@ -85,21 +85,6 @@ public:
 	}
 
 	/**
-	 * Read len characters from the buffer and
-	 * return them as a 0-terminated string. If less than len characters
-	 * are available, the returned string will be shorter.
-	 *
-	 * Deleting the pointer is the caller's responsibility.
-	 */
-	char *readString(size_t len) {
-		len = std::min(len, bytesRemaining());
-		char *result = new char[len+1];
-		read(reinterpret_cast<uint8_t *>(result), len);
-		result[len] = 0;
-		return result;
-	}
-
-	/**
 	 * Read a 0-terminated string from the buffer and
 	 * return it. If the buffer contains no 0
 	 * value, the entire buffer plus an added 0
@@ -110,7 +95,7 @@ public:
 	char *readString() {
 		std::vector<uint8_t>::iterator readIterator = data.begin()+readIndex;
 		size_t len = std::find(readIterator, data.end(), 0) - readIterator;
-		char *result = readString(len);
+		char *result = ReadWritable::readString(len);
 
 		// Remove the separator too, unless we just read the entire buffer
 		if(readIndex < size()) {

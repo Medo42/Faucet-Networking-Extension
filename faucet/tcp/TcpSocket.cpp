@@ -15,6 +15,7 @@ TcpSocket::TcpSocket(State initialState) :
 		sendbuffer_(),
 		sendbufferSizeLimit_(std::numeric_limits<size_t>::max()),
 		asyncSendInProgress_(false),
+		partialReceiveBuffer_(),
 		receiveBuffer_(),
 		asyncReceiveInProgress_(false) {
 }
@@ -27,6 +28,7 @@ TcpSocket::TcpSocket(tcp::socket *connectedSocket) :
 		sendbuffer_(),
 		sendbufferSizeLimit_(std::numeric_limits<size_t>::max()),
 		asyncSendInProgress_(false),
+		partialReceiveBuffer_(),
 		receiveBuffer_(),
 		asyncReceiveInProgress_(false) {
 	disableNagle();
@@ -55,6 +57,18 @@ void TcpSocket::write(const uint8_t *buffer, size_t size) {
 	}
 }
 
+size_t TcpSocket::read(uint8_t *out, size_t size) {
+	return receiveBuffer_.read(out, size);
+}
+
+size_t TcpSocket::bytesRemaining() const {
+	return receiveBuffer_.bytesRemaining();
+}
+
+Buffer &TcpSocket::getReceiveBuffer() {
+	return receiveBuffer_;
+}
+
 size_t TcpSocket::getSendbufferSize() {
 	return sendbuffer_.totalSize();
 }
@@ -75,58 +89,59 @@ void TcpSocket::send() {
 /**
  * @throws
  */
-void TcpSocket::nonblockReceiveAvailable() {
+void TcpSocket::nonblockReceive(size_t maxData) {
 	if(asyncReceiveInProgress_ || state_ != TCPSOCK_CONNECTED) {
 		return;
 	}
 
 	size_t available = socket_->available();
-	size_t recvBufferEndIndex = receiveBuffer_.size();
-	receiveBuffer_.insert(receiveBuffer_.end(), available, 0);
-	boost::asio::read(*socket_, boost::asio::buffer(receiveBuffer_.data()+recvBufferEndIndex, available));
+	size_t readAmmount = std::min(maxData, available);
+	size_t recvBufferEndIndex = partialReceiveBuffer_.size();
+	partialReceiveBuffer_.insert(partialReceiveBuffer_.end(), readAmmount, 0);
+	boost::asio::read(*socket_, boost::asio::buffer(partialReceiveBuffer_.data()+recvBufferEndIndex, readAmmount));
 }
 
-boost::shared_ptr<Buffer> TcpSocket::receive(size_t ammount) {
+bool TcpSocket::receive(size_t ammount) {
+	receiveBuffer_.clear();
 	if(asyncReceiveInProgress_ || state_ != TCPSOCK_CONNECTED) {
-		return boost::shared_ptr<Buffer>();
+		return false;
 	}
 
-	if(receiveBuffer_.size() < ammount) {
+	if(partialReceiveBuffer_.size() < ammount) {
 		// Try to satisfy the request with a nonblocking read
 		try {
-			nonblockReceiveAvailable();
+			nonblockReceive(ammount-partialReceiveBuffer_.size());
 		} catch(boost::system::system_error &e) {
 			handleError(e.code().message());
-			return boost::shared_ptr<Buffer>();
+			return false;
 		}
 	}
 
-	if(receiveBuffer_.size() >= ammount) {
-		boost::shared_ptr<Buffer> result(new Buffer());
-		result->write(receiveBuffer_.data(), ammount);
-		receiveBuffer_.erase(receiveBuffer_.begin(), receiveBuffer_.begin()+ammount);
-		return result;
+	if(partialReceiveBuffer_.size() >= ammount) {
+		receiveBuffer_.write(partialReceiveBuffer_.data(), ammount);
+		partialReceiveBuffer_.erase(partialReceiveBuffer_.begin(), partialReceiveBuffer_.begin()+ammount);
+		return true;
 	} else {
-		size_t remaining = ammount - receiveBuffer_.size();
+		size_t remaining = ammount - partialReceiveBuffer_.size();
 		startAsyncReceive(remaining);
-		return boost::shared_ptr<Buffer>();
+		return false;
 	}
 }
 
-boost::shared_ptr<Buffer> TcpSocket::receive() {
-	boost::shared_ptr<Buffer> result(new Buffer());
+size_t TcpSocket::receive() {
+	receiveBuffer_.clear();
 	if(asyncReceiveInProgress_ || state_ != TCPSOCK_CONNECTED) {
-		return result;
+		return 0;
 	}
 
 	try {
-		nonblockReceiveAvailable();
-		result->write(receiveBuffer_.data(), receiveBuffer_.size());
-		receiveBuffer_.clear();
+		nonblockReceive(std::numeric_limits<size_t>::max());
+		receiveBuffer_.write(partialReceiveBuffer_.data(), partialReceiveBuffer_.size());
+		partialReceiveBuffer_.clear();
 	} catch(boost::system::system_error &e) {
 		handleError(e.code().message());
 	}
-	return result;
+	return receiveBuffer_.size();
 }
 
 bool TcpSocket::isEof() {
@@ -134,7 +149,7 @@ bool TcpSocket::isEof() {
 	case TCPSOCK_CONNECTING:
 		return false;
 	case TCPSOCK_CONNECTED:
-		if(receiveBuffer_.size()>0 || asyncReceiveInProgress_) {
+		if(partialReceiveBuffer_.size()>0 || asyncReceiveInProgress_) {
 			return false;
 		}
 		try {
@@ -230,7 +245,7 @@ void TcpSocket::handleError(const std::string &errorMessage) {
 	// Clearing these should be safe, since closing the socket aborts all
 	// asynchronous operations immediately
 	sendbuffer_.clear();
-	receiveBuffer_.clear();
+	partialReceiveBuffer_.clear();
 }
 
 void TcpSocket::handleResolve(const boost::system::error_code &error,
@@ -297,9 +312,9 @@ void TcpSocket::startAsyncReceive(size_t ammount) {
 	if(!asyncReceiveInProgress_) {
 		asyncReceiveInProgress_ = true;
 
-		size_t recvBufferEndIndex = receiveBuffer_.size();
-		receiveBuffer_.insert(receiveBuffer_.end(), ammount, 0);
-		boost::asio::async_read(*socket_, boost::asio::buffer(receiveBuffer_.data()+recvBufferEndIndex, ammount),
+		size_t recvBufferEndIndex = partialReceiveBuffer_.size();
+		partialReceiveBuffer_.insert(partialReceiveBuffer_.end(), ammount, 0);
+		boost::asio::async_read(*socket_, boost::asio::buffer(partialReceiveBuffer_.data()+recvBufferEndIndex, ammount),
 				boost::bind(
 						&TcpSocket::handleReceive,
 						shared_from_this(),
