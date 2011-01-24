@@ -6,10 +6,11 @@ using namespace boost::asio::ip;
 
 TcpAcceptor::TcpAcceptor() :
 		acceptor_(Asio::getIoService()),
-		socket_(new tcp::socket(Asio::getIoService())),
-		socketIsConnected_(false),
+		socket_(0),
 		hasError_(false),
-		errorMessage_() {
+		errorMessage_(),
+		socketMutex_(),
+		errorMutex_() {
 }
 
 boost::shared_ptr<TcpAcceptor> TcpAcceptor::listen(const tcp::endpoint &endpoint) {
@@ -20,51 +21,62 @@ boost::shared_ptr<TcpAcceptor> TcpAcceptor::listen(const tcp::endpoint &endpoint
 		result->acceptor_.bind(endpoint);
 		result->acceptor_.listen();
 
-		result->acceptor_.async_accept(*(result->socket_), boost::bind(
-				&TcpAcceptor::handleAccept,
-				result,
-				boost::asio::placeholders::error));
 	} catch(boost::system::system_error &newErr) {
 		boost::system::error_code error;
 		result->acceptor_.close(error);
 		result->hasError_ = true;
 		result->errorMessage_ = newErr.code().message();
+		return result;
 	}
+
+	result->startAsyncAccept();
 	return result;
 }
 
 TcpAcceptor::~TcpAcceptor() {
+	boost::lock_guard<boost::mutex> guard(socketMutex_);
 	delete socket_;
 }
 
-const std::string &TcpAcceptor::getErrorMessage() {
+std::string TcpAcceptor::getErrorMessage() {
+	boost::lock_guard<boost::mutex> guard(errorMutex_);
 	return errorMessage_;
 }
 
 bool TcpAcceptor::hasError() {
+	boost::lock_guard<boost::mutex> guard(errorMutex_);
 	return hasError_;
 }
 
 boost::shared_ptr<TcpSocket> TcpAcceptor::accept() {
-	if(socketIsConnected_) {
+	boost::lock_guard<boost::mutex> guard(socketMutex_);
+	if(socket_) {
 		// Ownership of the socket transfers to the TcpSocket
 		boost::shared_ptr<TcpSocket> tcpSocket = TcpSocket::fromConnectedSocket(socket_);
-		socket_ = new tcp::socket(Asio::getIoService());
-		socketIsConnected_ = false;
-		acceptor_.async_accept(*socket_, boost::bind(
-				&TcpAcceptor::handleAccept,
-				shared_from_this(),
-				boost::asio::placeholders::error));
+		socket_ = 0;
+		startAsyncAccept();
 		return tcpSocket;
 	} else {
 		return boost::shared_ptr<TcpSocket>();
 	}
 }
 
-void TcpAcceptor::handleAccept(const boost::system::error_code &error) {
+void TcpAcceptor::startAsyncAccept() {
+	tcp::socket *socket = new tcp::socket(Asio::getIoService());
+	acceptor_.async_accept(*socket, boost::bind(
+			&TcpAcceptor::handleAccept,
+			shared_from_this(),
+			boost::asio::placeholders::error,
+			socket));
+}
+
+void TcpAcceptor::handleAccept(const boost::system::error_code &error, tcp::socket *socket) {
 	if(!error) {
-		socketIsConnected_ = true;
+		boost::lock_guard<boost::mutex> guard(socketMutex_);
+		socket_ = socket;
 	} else {
+		delete socket;
+		boost::lock_guard<boost::mutex> guard(errorMutex_);
 		hasError_ = true;
 		errorMessage_ = error.message();
 	}

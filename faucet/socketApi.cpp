@@ -9,6 +9,7 @@
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/cast.hpp>
+
 #include <limits>
 
 #define DLLEXPORT extern "C" __declspec(dllexport)
@@ -19,13 +20,6 @@ using boost::numeric::bad_numeric_cast;
 typedef boost::shared_ptr<Buffer> BufferPtr;
 typedef boost::shared_ptr<CombinedTcpAcceptor> AcceptorPtr;
 HandleMap handles;
-
-static void handleIo() {
-	Asio::getIoService().poll();
-	// TODO handle the potential exception/error propagated through from a handler
-	// It's a code bug if this happens, so we need to try getting debug info out.
-	// (Left unhandled like this the game will crash - but for now that's preferable to not noticing it)
-}
 
 DLLEXPORT double tcp_connect(char *host, double port) {
 	uint16_t intPort;
@@ -43,7 +37,6 @@ DLLEXPORT double tcp_connect(char *host, double port) {
 }
 
 DLLEXPORT double socket_connecting(double socketHandle) {
-	handleIo();
 	boost::shared_ptr<Socket> socket = handles.find<Socket>(socketHandle);
 	if(socket) {
 		return socket->isConnecting();
@@ -69,7 +62,7 @@ DLLEXPORT double tcp_listen(double port) {
 }
 
 DLLEXPORT double socket_accept(double handle) {
-	handleIo();	AcceptorPtr acceptor = handles.find<CombinedTcpAcceptor>(handle);
+	AcceptorPtr acceptor = handles.find<CombinedTcpAcceptor>(handle);
 	if(acceptor) {
 		boost::shared_ptr<Socket> accepted = acceptor->accept();
 
@@ -81,7 +74,6 @@ DLLEXPORT double socket_accept(double handle) {
 }
 
 DLLEXPORT double socket_has_error(double handle) {
-	handleIo();
 	boost::shared_ptr<Fallible> fallible = handles.find<Fallible>(handle);
 
 	if(fallible) {
@@ -92,11 +84,12 @@ DLLEXPORT double socket_has_error(double handle) {
 }
 
 DLLEXPORT const char *socket_error(double handle) {
-	handleIo();
+	static std::string stringbuf;
 	boost::shared_ptr<Fallible> fallible = handles.find<Fallible>(handle);
 
 	if(fallible) {
-		return fallible->getErrorMessage().c_str();
+		stringbuf = fallible->getErrorMessage();
+		return stringbuf.c_str();
 	} else {
 		return "This handle is invalid.";
 	}
@@ -115,8 +108,6 @@ static void destroySocket(double handle, bool hard) {
 		handles.release(handle);
 		return;
 	}
-
-	handleIo();
 }
 
 DLLEXPORT double socket_destroy(double handle) {
@@ -209,7 +200,6 @@ DLLEXPORT double write_buffer(double destHandle, double bufferHandle) {
 }
 
 DLLEXPORT double tcp_receive(double socketHandle, double size) {
-	handleIo();
 	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(socketHandle);
 	if(socket) {
 		size_t intSize;
@@ -225,7 +215,6 @@ DLLEXPORT double tcp_receive(double socketHandle, double size) {
 }
 
 DLLEXPORT double tcp_receive_available(double socketHandle) {
-	handleIo();
 	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(socketHandle);
 	if(socket) {
 		return socket->receive();
@@ -235,7 +224,6 @@ DLLEXPORT double tcp_receive_available(double socketHandle) {
 }
 
 DLLEXPORT double tcp_eof(double socketHandle) {
-	handleIo();
 	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(socketHandle);
 	if(socket) {
 		return socket->isEof();
@@ -245,7 +233,6 @@ DLLEXPORT double tcp_eof(double socketHandle) {
 }
 
 DLLEXPORT double socket_send(double socketHandle) {
-	handleIo();
 	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(socketHandle);
 	if(socket) {
 		socket->send();
@@ -254,7 +241,6 @@ DLLEXPORT double socket_send(double socketHandle) {
 }
 
 DLLEXPORT double socket_sendbuffer_size(double socketHandle) {
-	handleIo();
 	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(socketHandle);
 	if(socket) {
 		return socket->getSendbufferSize();
@@ -264,7 +250,6 @@ DLLEXPORT double socket_sendbuffer_size(double socketHandle) {
 }
 
 DLLEXPORT double socket_receivebuffer_size(double socketHandle) {
-	handleIo();
 	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket>(socketHandle);
 	if(socket) {
 		return socket->getReceiveBuffer().size();
@@ -285,9 +270,13 @@ DLLEXPORT double socket_sendbuffer_limit(double socketHandle, double sizeLimit) 
 	return 0;
 }
 
+DLLEXPORT double dllStartup() {
+	Asio::startup();
+	return 0;
+}
+
 DLLEXPORT double dllShutdown() {
-	Asio::getIoService().stop();
-	Asio::destroyIoService();
+	Asio::shutdown();
 	return 0;
 }
 
@@ -421,11 +410,6 @@ DLLEXPORT double udp_send(double bufferHandle, const char *host, double port) {
 /**
  * Generic functions
  */
-
-DLLEXPORT double socket_handle_io() {
-	handleIo();
-	return 0;
-}
 
 DLLEXPORT double debug_handles() {
 	return handles.size();

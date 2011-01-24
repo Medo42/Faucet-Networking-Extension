@@ -15,7 +15,7 @@ using namespace boost::asio::ip;
 class TcpSocket : public Socket, public ReadWritable, public boost::enable_shared_from_this<TcpSocket> {
 public:
 	virtual bool isConnecting();
-	virtual const std::string &getErrorMessage();
+	virtual std::string getErrorMessage();
 	virtual bool hasError();
 
 	// Functions required by the ReadWritable interface

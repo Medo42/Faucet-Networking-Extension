@@ -72,6 +72,12 @@ void UdpSender::handleSend(const boost::system::error_code &error,
 	}
 }
 
+/*
+ * Access to the sockets is not thread safe, but since they are
+ * only accessed from the handler thread after construction and
+ * we only use one handler thread, we don't need any synchronization.
+ */
+
 udp::socket *UdpSender::getAppropriateSocket(udp::endpoint &endpoint) {
 	if(endpoint.protocol() == udp::v4()) {
 		return &ipv4Socket;

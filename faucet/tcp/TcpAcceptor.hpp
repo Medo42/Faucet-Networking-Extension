@@ -6,6 +6,7 @@
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
+#include <boost/thread/mutex.hpp>
 #include <string>
 
 class TcpSocket;
@@ -15,7 +16,7 @@ class TcpAcceptor : public boost::enable_shared_from_this<TcpAcceptor> {
 public:
 	virtual ~TcpAcceptor();
 
-	virtual const std::string &getErrorMessage();
+	virtual std::string getErrorMessage();
 	virtual bool hasError();
 
 	/**
@@ -32,16 +33,14 @@ private:
 	TcpAcceptor();
 	tcp::acceptor acceptor_;
 
-	/**
-	 * Between method calls socket_ always points to a socket that has
-	 * *not* been returned yet. Thus is belongs to this object and has
-	 * to be destroyed properly on destruction.
-	 */
 	tcp::socket *socket_;
-	bool socketIsConnected_;
 
 	bool hasError_;
 	std::string errorMessage_;
 
-	void handleAccept(const boost::system::error_code &error);
+	boost::mutex socketMutex_;
+	boost::mutex errorMutex_;
+
+	void startAsyncAccept();
+	void handleAccept(const boost::system::error_code &error, tcp::socket *socket);
 };

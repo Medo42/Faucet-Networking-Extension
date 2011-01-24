@@ -4,20 +4,17 @@
 #define _WIN32_WINNT 0x0501
 #include <boost/asio.hpp>
 
+namespace boost {
+	class thread;
+}
+
 class Asio {
 public:
-	static boost::asio::io_service &getIoService() {
-		if(ioService == 0) {
-			ioService = new boost::asio::io_service();
-		}
-		return *ioService;
-	}
-
-	static void destroyIoService() {
-		delete ioService;
-		ioService = 0;
-	}
-
+	static void startup();
+	static boost::asio::io_service &getIoService();
+	static void shutdown();
 private:
 	static boost::asio::io_service *ioService;
+	static boost::asio::io_service::work *work;
+	static boost::thread *butler;
 };

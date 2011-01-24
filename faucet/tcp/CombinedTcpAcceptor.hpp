@@ -18,7 +18,7 @@ public:
 	CombinedTcpAcceptor(uint16_t port);
 	virtual ~CombinedTcpAcceptor();
 
-	virtual const std::string &getErrorMessage();
+	virtual std::string getErrorMessage();
 	virtual bool hasError();
 
 	/**

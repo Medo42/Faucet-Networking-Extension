@@ -42,7 +42,7 @@ bool TcpSocket::hasError() {
 	return state_ == TCPSOCK_FAILED;
 }
 
-const std::string &TcpSocket::getErrorMessage() {
+std::string TcpSocket::getErrorMessage() {
 	return errorMessage_;
 }
 

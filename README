@@ -31,7 +31,8 @@ the following rules:
 - As include directories, you need to set up the Boost include dir as well as the project
   directory itself (i.e. the directory containing this file)
 - Link statically with the mswsock and ws2_32 libraries, as well as the boost system library
-  (I used the mt-s variant). Also, statically link with the multithreading-safe standard library.
+  and Boost threads (I used the mt-s variants). Also, statically link with the
+  multithreading-safe standard library.
   
 Please let me know if it worked, I set this up more or less by trial and error myself :P
 
