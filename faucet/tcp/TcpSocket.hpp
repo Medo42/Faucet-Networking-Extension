@@ -1,18 +1,26 @@
 #pragma once
+
 #include <faucet/Socket.hpp>
 #include <faucet/ReadWritable.hpp>
 #include <faucet/Asio.hpp>
 #include <faucet/tcp/SendBuffer.hpp>
 #include <faucet/Buffer.hpp>
+#include <faucet/tcp/connectionStates/ConnectionState.hpp>
+#include <faucet/tcp/connectionStates/TcpConnecting.hpp>
+#include <faucet/tcp/connectionStates/TcpConnected.hpp>
+#include <faucet/tcp/connectionStates/TcpClosing.hpp>
+#include <faucet/tcp/connectionStates/TcpClosed.hpp>
+#include <faucet/tcp/connectionStates/TcpError.hpp>
+
+#include <boost/enable_shared_from_this.hpp>
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
-#include <boost/scoped_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
+#include <boost/thread/recursive_mutex.hpp>
 #include <string>
 
-using namespace boost::asio::ip;
-
 class TcpSocket : public Socket, public ReadWritable, public boost::enable_shared_from_this<TcpSocket> {
+	friend class ConnectionState;
+
 public:
 	virtual bool isConnecting();
 	virtual std::string getErrorMessage();
@@ -53,7 +61,7 @@ public:
 	 * Create a new socket representing a connection to the
 	 * given host and port.
 	 */
-	static boost::shared_ptr<TcpSocket> connectTo(const char *numericAddress, uint16_t port);
+	static boost::shared_ptr<TcpSocket> connectTo(const char *host, uint16_t port);
 
 	/**
 	 * Create an error socket with the given parameter as error message
@@ -63,48 +71,39 @@ public:
 	/**
 	 * Create a connected TcpSocket from an existing connected tcp::socket
 	 */
-	static boost::shared_ptr<TcpSocket> fromConnectedSocket(tcp::socket *connectedSocket);
+	static boost::shared_ptr<TcpSocket> fromConnectedSocket(
+			boost::shared_ptr<boost::asio::ip::tcp::socket> connectedSocket);
+
 private:
-	enum State {
-		TCPSOCK_CONNECTING,
-		TCPSOCK_CONNECTED,
-		TCPSOCK_CLOSING,
-		TCPSOCK_CLOSED,
-		TCPSOCK_FAILED
-	};
+	/**
+	 * commonMutex_ is das big lock for TcpSocket and its related state objects.
+	 * I tried more finely grained locking first, but it resulted in deadlock prone
+	 * situations.
+	 */
+	boost::recursive_mutex commonMutex_;
 
-	boost::scoped_ptr<tcp::socket> socket_;
-	tcp::resolver resolver_;
-
-	State state_;
-	std::string errorMessage_;
+	/*
+	 * The following members are accessed from both the client thread and
+	 * from completion handlers. For all access to them the common mutex
+	 * must be locked first.
+	 */
+	boost::shared_ptr<boost::asio::ip::tcp::socket> socket_;
+	ConnectionState *state_;
+	TcpConnecting tcpConnecting_;
+	TcpConnected tcpConnected_;
+	TcpClosing tcpClosing_;
+	TcpClosed tcpClosed_;
+	TcpError tcpError_;
 
 	SendBuffer sendbuffer_;
-	size_t sendbufferSizeLimit_;
-	bool asyncSendInProgress_;
 
-	std::vector<uint8_t> partialReceiveBuffer_;
+	/*
+	 * The following members are only accessed from the client thread and
+	 * don't need synchronization.
+	 */
 	Buffer receiveBuffer_;
-	bool asyncReceiveInProgress_;
+	size_t sendbufferSizeLimit_;
 
-	TcpSocket(State initialState);
-	TcpSocket(tcp::socket *socket);
-
-	void disableNagle();
-	void nonblockReceive(size_t maxData);
-	Buffer *bufferFromReceiveBuffer();
-
-	void handleError(const std::string &errorMessage);
-	void handleResolve(const boost::system::error_code &err,
-			tcp::resolver::iterator endpointIterator);
-	void handleConnect(const boost::system::error_code &err,
-			tcp::resolver::iterator endpointIterator);
-
-	void startAsyncSend();
-	void startAsyncReceive(size_t ammount);
-
-	void handleSend(const boost::system::error_code &err,
-			size_t bytesTransferred);
-	void handleReceive(const boost::system::error_code &err,
-			size_t bytesTransferred);
+	void enterErrorState(const std::string &message);
+	void enterConnectedState();
 };

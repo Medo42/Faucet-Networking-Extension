@@ -33,6 +33,8 @@ the following rules:
 - Link statically with the mswsock and ws2_32 libraries, as well as the boost system library
   and Boost threads (I used the mt-s variants). Also, statically link with the
   multithreading-safe standard library.
+- For compiling with mingw, make sure to add the -mthreads switch to both the compiler and
+  the linker. This will make exceptions thread-safe, which sounds like a good thing.
   
 Please let me know if it worked, I set this up more or less by trial and error myself :P
 

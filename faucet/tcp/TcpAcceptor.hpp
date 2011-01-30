@@ -12,6 +12,7 @@
 class TcpSocket;
 
 using namespace boost::asio::ip;
+using boost::shared_ptr;
 class TcpAcceptor : public boost::enable_shared_from_this<TcpAcceptor> {
 public:
 	virtual ~TcpAcceptor();
@@ -23,17 +24,17 @@ public:
 	 * If a connection is waiting to be accepted, a socket to this
 	 * connection is returned. Otherwise a NULL pointer is returned.
 	 */
-	boost::shared_ptr<TcpSocket> accept();
+	shared_ptr<TcpSocket> accept();
 
 	/**
 	 * Create a new Acceptor that will listen at the given port.
 	 */
-	static boost::shared_ptr<TcpAcceptor> listen(const tcp::endpoint &endpoint);
+	static shared_ptr<TcpAcceptor> listen(const tcp::endpoint &endpoint);
 private:
 	TcpAcceptor();
 	tcp::acceptor acceptor_;
 
-	tcp::socket *socket_;
+	shared_ptr<tcp::socket> socket_;
 
 	bool hasError_;
 	std::string errorMessage_;
@@ -42,5 +43,5 @@ private:
 	boost::mutex errorMutex_;
 
 	void startAsyncAccept();
-	void handleAccept(const boost::system::error_code &error, tcp::socket *socket);
+	void handleAccept(const boost::system::error_code &error, shared_ptr<tcp::socket> socket);
 };
