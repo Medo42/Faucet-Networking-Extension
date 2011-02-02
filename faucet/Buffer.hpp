@@ -4,12 +4,14 @@
 #include <faucet/ReadWritable.hpp>
 
 #include <boost/integer.hpp>
+#include <boost/utility.hpp>
+
 #include <vector>
 #include <string>
 #include <algorithm>
 #include <cstring>
 
-class Buffer : public Handled, public ReadWritable {
+class Buffer : public Handled, public ReadWritable, boost::noncopyable {
 	std::vector<uint8_t> data;
 	size_t readIndex;
 public:

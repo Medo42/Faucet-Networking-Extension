@@ -1,6 +1,18 @@
 #include "TcpSocket.hpp"
 
 #include <boost/thread/locks.hpp>
+#include <limits>
+
+using namespace boost::asio::ip;
+
+TcpSocket::~TcpSocket() {
+	// Ensure graceful close
+	if(socket_ && socket_->is_open()) {
+		boost::system::error_code newError;
+		socket_->shutdown(tcp::socket::shutdown_both, newError);
+		socket_->close();
+	}
+}
 
 bool TcpSocket::isConnecting() {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
@@ -19,8 +31,8 @@ bool TcpSocket::hasError() {
 
 void TcpSocket::write(const uint8_t *in, size_t size) {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
-	if(state_->allowWrite()) {
-		if(sendbuffer_.totalSize() + size > sendbufferSizeLimit_) {
+	if (state_->allowWrite()) {
+		if (sendbuffer_.totalSize() + size > sendbufferSizeLimit_) {
 			enterErrorState("The send buffer size limit was exceeded.");
 			return;
 		} else {
@@ -53,25 +65,78 @@ void TcpSocket::setSendbufferLimit(size_t maxSize) {
 void TcpSocket::send() {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
 	sendbuffer_.commit();
-	state_->startAsyncSend(*this);
+	state_->startAsyncSend();
 }
 
-bool receive(size_t ammount);
-size_t receive();
+bool TcpSocket::receive(size_t ammount) {
+	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
+	receiveBuffer_.clear();
+	return state_->receive(ammount);
+}
+
+size_t TcpSocket::receive() {
+	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
+	receiveBuffer_.clear();
+	state_->receive();
+	return receiveBuffer_.size();
+}
 
 bool TcpSocket::isEof() {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
-	return state_->isEof(*this);
+	return state_->isEof();
 }
 
-void disconnect(bool hard);
+void TcpSocket::disconnectAbortive() {
+	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
+	enterClosedState();
+}
 
-void TcpSocket::enterErrorState(const std::string &message) {
-	state_->abort(*this);
-	state_ = &tcpError_;
-	tcpError_.enter(*this, message);
+boost::shared_ptr<TcpSocket> TcpSocket::connectTo(const char *host,
+		uint16_t port) {
+	boost::shared_ptr<tcp::socket> asioSocket(new tcp::socket(
+			Asio::getIoService()));
+	boost::shared_ptr<TcpSocket> result(new TcpSocket(asioSocket));
+	result->state_ = &(result->tcpConnecting_);
+	result->tcpConnecting_.enter(host, port);
+	return result;
+}
+
+boost::shared_ptr<TcpSocket> TcpSocket::error(const std::string &message) {
+	boost::shared_ptr<tcp::socket> asioSocket(new tcp::socket(Asio::getIoService()));
+	boost::shared_ptr<TcpSocket> result(new TcpSocket(asioSocket));
+	result->state_ = &(result->tcpClosed_);
+	result->tcpClosed_.enterError(message);
+	return result;
+}
+
+boost::shared_ptr<TcpSocket> TcpSocket::fromConnectedSocket(boost::shared_ptr<
+		tcp::socket> connectedSocket) {
+	boost::shared_ptr<TcpSocket> result(new TcpSocket(connectedSocket));
+	result->state_ = &(result->tcpConnected_);
+	result->tcpConnected_.enter();
+	return result;
+}
+
+TcpSocket::TcpSocket(boost::shared_ptr<tcp::socket> socket) :
+	commonMutex_(), socket_(socket), tcpConnecting_(*this),
+			tcpConnected_(*this), tcpClosed_(*this), state_(0), sendbuffer_(),
+			receiveBuffer_(), sendbufferSizeLimit_(
+					std::numeric_limits<size_t>::max()) {
 }
 
 void TcpSocket::enterConnectedState() {
 	state_ = &tcpConnected_;
+	tcpConnected_.enter();
+}
+
+void TcpSocket::enterErrorState(const std::string &message) {
+	state_->abort();
+	state_ = &tcpClosed_;
+	tcpClosed_.enterError(message);
+}
+
+void TcpSocket::enterClosedState() {
+	state_->abort();
+	state_ = &tcpClosed_;
+	tcpClosed_.enterClosed();
 }

@@ -6,16 +6,18 @@
 
 class TcpConnected: public ConnectionState {
 public:
-	TcpConnected();
-	void enter(TcpSocket &socket);
+	TcpConnected(TcpSocket &tcpSocket);
+	void enter();
 
-	virtual void abort(TcpSocket &socket);
+	virtual void abort();
 
 	virtual bool allowWrite() {
 		return true;
 	}
-	virtual void startAsyncSend(TcpSocket &socket);
-	virtual bool isEof(TcpSocket &socket);
+	virtual void startAsyncSend();
+	virtual bool isEof();
+	virtual bool receive(size_t ammount);
+	virtual void receive();
 
 private:
 	bool asyncSendInProgress;
@@ -24,6 +26,12 @@ private:
 	std::vector<uint8_t> partialReceiveBuffer;
 	bool asyncReceiveInProgress;
 
+	void nonblockReceive(size_t maxData);
+
 	void handleSend(boost::shared_ptr<TcpSocket> socket,
 			const boost::system::error_code &err, size_t bytesTransferred);
+
+	void startAsyncReceive(size_t ammount);
+	void handleReceive(boost::shared_ptr<TcpSocket> socket,
+			const boost::system::error_code &error);
 };

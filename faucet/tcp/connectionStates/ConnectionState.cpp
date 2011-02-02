@@ -2,25 +2,30 @@
 
 #include <faucet/tcp/TcpSocket.hpp>
 
-void ConnectionState::startAsyncSend(TcpSocket &socket) {
+ConnectionState::ConnectionState(TcpSocket &tcpSocket) :
+	socket(&tcpSocket) {
 }
 
-void ConnectionState::enterErrorState(TcpSocket &socket, const std::string &message) {
-	socket.enterErrorState(message);
+void ConnectionState::enterErrorState(const std::string &message) {
+	socket->enterErrorState(message);
 }
 
-void ConnectionState::enterConnectedState(TcpSocket &socket) {
-	socket.enterConnectedState();
+void ConnectionState::enterConnectedState() {
+	socket->enterConnectedState();
 }
 
-boost::asio::ip::tcp::socket &ConnectionState::getSocket(TcpSocket &socket) {
-	return *socket.socket_;
+boost::asio::ip::tcp::socket &ConnectionState::getSocket() {
+	return *(socket->socket_);
 }
 
-boost::recursive_mutex &ConnectionState::getCommonMutex(TcpSocket &socket) {
-	return socket.commonMutex_;
+boost::recursive_mutex &ConnectionState::getCommonMutex() {
+	return socket->commonMutex_;
 }
 
-SendBuffer &ConnectionState::getSendBuffer(TcpSocket &socket) {
-	return socket.sendbuffer_;
+SendBuffer &ConnectionState::getSendBuffer() {
+	return socket->sendbuffer_;
+}
+
+Buffer &ConnectionState::getReceiveBuffer() {
+	return socket->receiveBuffer_;
 }

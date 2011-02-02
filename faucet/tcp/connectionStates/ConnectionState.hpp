@@ -7,7 +7,24 @@
 
 class TcpSocket;
 class SendBuffer;
+class Buffer;
 
+/**
+ * Some considerations on using these state objects:
+ *
+ * There are two ways that control can enter these objects: either by the TcpSocket
+ * they belong to or by callback handlers. If the object is called from the TcpSocket,
+ * the common mutex of that socket must already be locked. Completion handlers always
+ * lock that mutex before accessing any state of either the TcpSocket or the state object.
+ *
+ * The reference to the TcpSocket is stored as simple pointer here because we always
+ * know that the object exists: If the call comes from the TcpSocket this is directly
+ * obvious, and the completion handlers always contain a shared pointer reference
+ * to the socket to prevent it from being destroyed before all asynchronous requests are
+ * completed. We could use a shared pointer reference instead, but that would prevent
+ * the socket from being destroyed at all if the last external reference to it is
+ * destroyed.
+ */
 class ConnectionState {
 public:
 	/**
@@ -16,7 +33,7 @@ public:
 	 *
 	 * This method is called before transitioning to error state and during an abortive close.
 	 */
-	virtual void abort(TcpSocket &socket) = 0;
+	virtual void abort() = 0;
 
 	virtual bool isErrorState() {
 		return false;
@@ -29,18 +46,27 @@ public:
 	}
 
 	virtual bool allowWrite() = 0;
-
-	// Default for startAsyncSend: do nothing
-	virtual void startAsyncSend(TcpSocket &socket);
-
-	virtual bool isEof(TcpSocket &socket) = 0;
+	virtual void startAsyncSend() {
+	}
+	virtual bool isEof() = 0;
+	virtual bool receive(size_t ammount) {
+		return false;
+	}
+	virtual void receive() {
+		return;
+	}
 protected:
+	TcpSocket *socket;
+
+	ConnectionState(TcpSocket &tcpSocket);
+
 	/*
 	 * Indirection functions to prevent having to make all states friends of TcpSocket
 	 */
-	void enterErrorState(TcpSocket &socket, const std::string &message);
-	void enterConnectedState(TcpSocket &socket);
-	boost::asio::ip::tcp::socket &getSocket(TcpSocket &socket);
-	boost::recursive_mutex &getCommonMutex(TcpSocket &socket);
-	SendBuffer &getSendBuffer(TcpSocket &socket);
+	void enterErrorState(const std::string &message);
+	void enterConnectedState();
+	boost::asio::ip::tcp::socket &getSocket();
+	boost::recursive_mutex &getCommonMutex();
+	SendBuffer &getSendBuffer();
+	Buffer &getReceiveBuffer();
 };

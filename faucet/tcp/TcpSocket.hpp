@@ -8,20 +8,24 @@
 #include <faucet/tcp/connectionStates/ConnectionState.hpp>
 #include <faucet/tcp/connectionStates/TcpConnecting.hpp>
 #include <faucet/tcp/connectionStates/TcpConnected.hpp>
-#include <faucet/tcp/connectionStates/TcpClosing.hpp>
 #include <faucet/tcp/connectionStates/TcpClosed.hpp>
-#include <faucet/tcp/connectionStates/TcpError.hpp>
 
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/thread/recursive_mutex.hpp>
+#include <boost/utility.hpp>
 #include <string>
 
-class TcpSocket : public Socket, public ReadWritable, public boost::enable_shared_from_this<TcpSocket> {
+class TcpSocket: public Socket,
+		public ReadWritable,
+		public boost::enable_shared_from_this<TcpSocket>,
+		boost::noncopyable {
 	friend class ConnectionState;
 
 public:
+	~TcpSocket();
+
 	virtual bool isConnecting();
 	virtual std::string getErrorMessage();
 	virtual bool hasError();
@@ -55,13 +59,14 @@ public:
 	 */
 	bool isEof();
 
-	void disconnect(bool hard);
+	void disconnectAbortive();
 
 	/**
 	 * Create a new socket representing a connection to the
 	 * given host and port.
 	 */
-	static boost::shared_ptr<TcpSocket> connectTo(const char *host, uint16_t port);
+	static boost::shared_ptr<TcpSocket> connectTo(const char *host,
+			uint16_t port);
 
 	/**
 	 * Create an error socket with the given parameter as error message
@@ -71,8 +76,8 @@ public:
 	/**
 	 * Create a connected TcpSocket from an existing connected tcp::socket
 	 */
-	static boost::shared_ptr<TcpSocket> fromConnectedSocket(
-			boost::shared_ptr<boost::asio::ip::tcp::socket> connectedSocket);
+	static boost::shared_ptr<TcpSocket> fromConnectedSocket(boost::shared_ptr<
+			boost::asio::ip::tcp::socket> connectedSocket);
 
 private:
 	/**
@@ -88,12 +93,10 @@ private:
 	 * must be locked first.
 	 */
 	boost::shared_ptr<boost::asio::ip::tcp::socket> socket_;
-	ConnectionState *state_;
 	TcpConnecting tcpConnecting_;
 	TcpConnected tcpConnected_;
-	TcpClosing tcpClosing_;
 	TcpClosed tcpClosed_;
-	TcpError tcpError_;
+	ConnectionState *state_;
 
 	SendBuffer sendbuffer_;
 
@@ -104,6 +107,10 @@ private:
 	Buffer receiveBuffer_;
 	size_t sendbufferSizeLimit_;
 
-	void enterErrorState(const std::string &message);
+	TcpSocket(boost::shared_ptr<boost::asio::ip::tcp::socket> socket);
+
+	void enterConnectingState(const char *host, uint16_t port);
 	void enterConnectedState();
+	void enterClosedState();
+	void enterErrorState(const std::string &message);
 };
