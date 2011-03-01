@@ -96,6 +96,7 @@ boost::shared_ptr<TcpSocket> TcpSocket::connectTo(const char *host,
 	boost::shared_ptr<tcp::socket> asioSocket(new tcp::socket(
 			Asio::getIoService()));
 	boost::shared_ptr<TcpSocket> result(new TcpSocket(asioSocket));
+	boost::lock_guard<boost::recursive_mutex> guard(result->commonMutex_);
 	result->state_ = &(result->tcpConnecting_);
 	result->tcpConnecting_.enter(host, port);
 	return result;
@@ -104,6 +105,7 @@ boost::shared_ptr<TcpSocket> TcpSocket::connectTo(const char *host,
 boost::shared_ptr<TcpSocket> TcpSocket::error(const std::string &message) {
 	boost::shared_ptr<tcp::socket> asioSocket(new tcp::socket(Asio::getIoService()));
 	boost::shared_ptr<TcpSocket> result(new TcpSocket(asioSocket));
+	boost::lock_guard<boost::recursive_mutex> guard(result->commonMutex_);
 	result->state_ = &(result->tcpClosed_);
 	result->tcpClosed_.enterError(message);
 	return result;
@@ -112,6 +114,7 @@ boost::shared_ptr<TcpSocket> TcpSocket::error(const std::string &message) {
 boost::shared_ptr<TcpSocket> TcpSocket::fromConnectedSocket(boost::shared_ptr<
 		tcp::socket> connectedSocket) {
 	boost::shared_ptr<TcpSocket> result(new TcpSocket(connectedSocket));
+	boost::lock_guard<boost::recursive_mutex> guard(result->commonMutex_);
 	result->state_ = &(result->tcpConnected_);
 	result->tcpConnected_.enter();
 	return result;
