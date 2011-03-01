@@ -17,6 +17,9 @@ shared_ptr<TcpAcceptor> TcpAcceptor::listen(const tcp::endpoint &endpoint) {
 	try {
 		result->acceptor_.open(endpoint.protocol());
 		result->acceptor_.set_option(tcp::acceptor::reuse_address(true));
+		if(endpoint.protocol() == tcp::v6()) {
+			result->acceptor_.set_option(v6_only(true));
+		}
 		result->acceptor_.bind(endpoint);
 		result->acceptor_.listen();
 
@@ -55,6 +58,11 @@ shared_ptr<TcpSocket> TcpAcceptor::accept() {
 	} else {
 		return boost::shared_ptr<TcpSocket>();
 	}
+}
+
+void TcpAcceptor::close() {
+	boost::system::error_code error;
+	acceptor_.close(error);
 }
 
 void TcpAcceptor::startAsyncAccept() {

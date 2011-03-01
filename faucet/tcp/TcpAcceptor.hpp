@@ -27,6 +27,13 @@ public:
 	shared_ptr<TcpSocket> accept();
 
 	/**
+	 * Stop listening for connections. Call this to ensure the
+	 * object is actually destroyed when the last external shared_ptr
+	 * reference is released.
+	 */
+	void close();
+
+	/**
 	 * Create a new Acceptor that will listen at the given port.
 	 */
 	static shared_ptr<TcpAcceptor> listen(const tcp::endpoint &endpoint);

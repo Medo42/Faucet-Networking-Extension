@@ -9,7 +9,10 @@ CombinedTcpAcceptor::CombinedTcpAcceptor(uint16_t port) :
 		checkV6First_(false) {
 }
 
-CombinedTcpAcceptor::~CombinedTcpAcceptor() {}
+CombinedTcpAcceptor::~CombinedTcpAcceptor() {
+	v4Acceptor_->close();
+	v6Acceptor_->close();
+}
 
 std::string CombinedTcpAcceptor::getErrorMessage() {
 	return "IPv4: "+v4Acceptor_->getErrorMessage()+"; IPv6: "+v6Acceptor_->getErrorMessage();
