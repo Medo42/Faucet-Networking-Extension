@@ -84,10 +84,15 @@ public:
 			return;
 		}
 		try {
-			return release(numeric_cast<uint32_t>(handle));
+			release(numeric_cast<uint32_t>(handle));
+			return;
 		} catch(bad_numeric_cast &e) {
 			return;
 		}
+	}
+
+	void releaseAll() {
+		content_.clear();
 	}
 
 	uint32_t size() {

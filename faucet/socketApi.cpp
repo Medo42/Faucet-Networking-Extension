@@ -307,6 +307,7 @@ DLLEXPORT double dllStartup() {
 }
 
 DLLEXPORT double dllShutdown() {
+	handles.releaseAll();
 	Asio::shutdown();
 	return 0;
 }
