@@ -1,4 +1,4 @@
-This is the Faucet Networking Extension, a Game Maker extension for easy integration of
+This is Faucet Networking, a Game Maker extension for easy integration of
 networking into Game Maker games. It is distributed under the ISC license, which is short
 and simple enough that I don't have to explain it, just read the LICENSE file.
 
@@ -29,7 +29,7 @@ the following rules:
 - all .cpp files in the faucet directory and subdirectories should be compiled
   and then linked as a dll.
 - As include directories, you need to set up the Boost include dir as well as the project
-  directory itself (i.e. the directory containing this file)
+  directory itself (i.e. the directory containing the "faucet" source directory)
 - Link statically with the mswsock and ws2_32 libraries, as well as the boost system library
   and Boost threads (I used the mt-s variants). Also, statically link with the
   multithreading-safe standard library.
