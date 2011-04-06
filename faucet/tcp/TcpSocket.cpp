@@ -45,6 +45,10 @@ size_t TcpSocket::read(uint8_t *out, size_t size) {
 	return receiveBuffer_.read(out, size);
 }
 
+std::string TcpSocket::readString(size_t size) {
+	return receiveBuffer_.readString(size);
+}
+
 size_t TcpSocket::bytesRemaining() const {
 	return receiveBuffer_.bytesRemaining();
 }
@@ -89,6 +93,11 @@ bool TcpSocket::isEof() {
 void TcpSocket::disconnectAbortive() {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
 	enterClosedState();
+}
+
+std::string TcpSocket::getRemoteIp() {
+	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
+	return remoteIp;
 }
 
 boost::shared_ptr<TcpSocket> TcpSocket::connectTo(const char *host,

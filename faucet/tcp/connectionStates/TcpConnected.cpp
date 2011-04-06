@@ -13,11 +13,15 @@ TcpConnected::TcpConnected(TcpSocket &tcpSocket) :
 }
 
 void TcpConnected::enter() {
-	// Disable Nagle's algorithm
-	boost::system::error_code error;
-	tcp::no_delay nodelay(true);
-	if (getSocket().set_option(nodelay, error)) {
-		enterErrorState(error.message());
+	try {
+		tcp::endpoint endpoint = getSocket().remote_endpoint();
+		setRemoteIp(endpoint.address().to_string());
+
+		// Disable Nagle's algorithm
+		tcp::no_delay nodelay(true);
+		getSocket().set_option(nodelay);
+	} catch(boost::system::system_error &e) {
+		enterErrorState(e.code().message());
 		return;
 	}
 

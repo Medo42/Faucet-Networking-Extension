@@ -5,6 +5,7 @@
 #include <boost/integer.hpp>
 #include <algorithm>
 #include <cmath>
+#include <string>
 
 class ReadWritable {
 private:
@@ -19,8 +20,19 @@ private:
 	}
 
 public:
+
 	virtual void write(const uint8_t *in, size_t size) = 0;
+
 	virtual size_t read(uint8_t *out, size_t size) = 0;
+
+	/**
+	 * Read len characters and return them as a string.
+	 *
+	 * If less than len characters are available, the returned string
+	 * will be shorter than requested.
+	 */
+	virtual std::string readString(size_t len) = 0;
+
 	virtual size_t bytesRemaining() const = 0;
 
 	/**
@@ -53,22 +65,6 @@ public:
 			std::reverse(valueAsBuffer, valueAsBuffer + sizeof(DesiredType));
 		}
 		return static_cast<double>(value);
-	}
-
-	/**
-	 * Read len characters and return them as a 0-terminated string.
-	 *
-	 * If less than len characters are available, the returned string
-	 * will be shorter.
-	 *
-	 * Deleting the pointer is the caller's responsibility.
-	 */
-	char *readString(size_t len) {
-		len = std::min(len, bytesRemaining());
-		char *result = new char[len+1];
-		read(reinterpret_cast<uint8_t *>(result), len);
-		result[len] = 0;
-		return result;
 	}
 
 	ReadWritable() : littleEndian_(littleEndianDefault_) {}

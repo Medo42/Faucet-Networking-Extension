@@ -72,6 +72,18 @@ public:
 	}
 
 	/**
+	 * Copy size bytes from the current read position of the buffer
+	 * into a newly allocated string. If less data is available,
+	 * the string will contain the entire remainder of the buffer.
+	 */
+	std::string readString(size_t size) {
+		size = std::min(size, bytesRemaining());
+		char *stringStart = (char*)data.data()+readIndex;
+		readIndex += size;
+		return std::string(stringStart, size);
+	}
+
+	/**
 	 * Append a string to the buffer
 	 *
 	 * @param str A 0-terminated string
@@ -89,15 +101,12 @@ public:
 	/**
 	 * Read a 0-terminated string from the buffer and
 	 * return it. If the buffer contains no 0
-	 * value, the entire buffer plus an added 0
-	 * will be returned in the string.
-	 *
-	 * Deleting the pointer is the caller's responsibility.
+	 * value, the entire buffer will be returned in the string.
 	 */
-	char *readString() {
+	std::string readString() {
 		std::vector<uint8_t>::iterator readIterator = data.begin()+readIndex;
 		size_t len = std::find(readIterator, data.end(), 0) - readIterator;
-		char *result = ReadWritable::readString(len);
+		std::string result = readString(len);
 
 		// Remove the separator too, unless we just read the entire buffer
 		if(readIndex < size()) {
@@ -105,6 +114,8 @@ public:
 		}
 		return result;
 	}
+
+
 
 	/**
 	 * Get a pointer to the buffer contents

@@ -5,6 +5,7 @@
 #include <faucet/Buffer.hpp>
 #include <faucet/udp/UdpSender.hpp>
 #include <faucet/clipped_cast.hpp>
+#include <faucet/GmStringBuffer.hpp>
 
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
@@ -407,14 +408,11 @@ DLLEXPORT double read_double(double handle) {
 }
 
 DLLEXPORT const char *read_string(double handle, double len) {
-	static char *stringbuf = 0;
-	delete stringbuf;
-
 	boost::shared_ptr<ReadWritable> readWritable = handles.find<ReadWritable> (
 			handle);
 	if (readWritable) {
-		stringbuf = readWritable->readString(clipped_cast<size_t> (len));
-		return stringbuf;
+		std::string str = readWritable->readString(clipped_cast<size_t> (len));
+		return replaceStringReturnBuffer(str);
 	} else {
 		return "";
 	}
@@ -461,4 +459,13 @@ DLLEXPORT double set_little_endian(double handle, double littleEndian) {
 		writable->setLittleEndian(littleEndian);
 	}
 	return 0;
+}
+
+DLLEXPORT const char* socket_remote_ip(double handle) {
+	boost::shared_ptr<TcpSocket> socket =
+			handles.find<TcpSocket> (handle);
+	if (socket) {
+		return replaceStringReturnBuffer(socket->getRemoteIp());
+	}
+	return "";
 }

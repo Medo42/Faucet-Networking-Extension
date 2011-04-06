@@ -33,6 +33,7 @@ public:
 	// Functions required by the ReadWritable interface
 	virtual void write(const uint8_t *in, size_t size);
 	virtual size_t read(uint8_t *out, size_t size);
+	virtual std::string readString(size_t size);
 	virtual size_t bytesRemaining() const;
 
 	Buffer &getReceiveBuffer();
@@ -60,6 +61,8 @@ public:
 	bool isEof();
 
 	void disconnectAbortive();
+
+	std::string getRemoteIp();
 
 	/**
 	 * Create a new socket representing a connection to the
@@ -99,6 +102,7 @@ private:
 	ConnectionState *state_;
 
 	SendBuffer sendbuffer_;
+	std::string remoteIp;
 
 	/*
 	 * The following members are only accessed from the client thread and
