@@ -38,17 +38,17 @@ shared_ptr<TcpAcceptor> TcpAcceptor::listen(const tcp::endpoint &endpoint) {
 TcpAcceptor::~TcpAcceptor() {}
 
 std::string TcpAcceptor::getErrorMessage() {
-	boost::lock_guard<boost::mutex> guard(errorMutex_);
+	boost::lock_guard<boost::recursive_mutex> guard(errorMutex_);
 	return errorMessage_;
 }
 
 bool TcpAcceptor::hasError() {
-	boost::lock_guard<boost::mutex> guard(errorMutex_);
+	boost::lock_guard<boost::recursive_mutex> guard(errorMutex_);
 	return hasError_;
 }
 
 shared_ptr<TcpSocket> TcpAcceptor::accept() {
-	boost::lock_guard<boost::mutex> guard(socketMutex_);
+	boost::lock_guard<boost::recursive_mutex> guard(socketMutex_);
 	if(socket_) {
 		// Ownership of the socket transfers to the TcpSocket
 		shared_ptr<TcpSocket> tcpSocket = TcpSocket::fromConnectedSocket(socket_);
@@ -76,10 +76,10 @@ void TcpAcceptor::startAsyncAccept() {
 
 void TcpAcceptor::handleAccept(const boost::system::error_code &error, shared_ptr<tcp::socket> socket) {
 	if(!error) {
-		boost::lock_guard<boost::mutex> guard(socketMutex_);
+		boost::lock_guard<boost::recursive_mutex> guard(socketMutex_);
 		socket_ = socket;
 	} else {
-		boost::lock_guard<boost::mutex> guard(errorMutex_);
+		boost::lock_guard<boost::recursive_mutex> guard(errorMutex_);
 		hasError_ = true;
 		errorMessage_ = error.message();
 	}

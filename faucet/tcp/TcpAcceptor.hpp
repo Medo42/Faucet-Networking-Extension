@@ -6,7 +6,7 @@
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
-#include <boost/thread/mutex.hpp>
+#include <boost/thread/recursive_mutex.hpp>
 #include <string>
 
 class TcpSocket;
@@ -46,8 +46,8 @@ private:
 	bool hasError_;
 	std::string errorMessage_;
 
-	boost::mutex socketMutex_;
-	boost::mutex errorMutex_;
+	boost::recursive_mutex socketMutex_;
+	boost::recursive_mutex errorMutex_;
 
 	void startAsyncAccept();
 	void handleAccept(const boost::system::error_code &error, shared_ptr<tcp::socket> socket);
