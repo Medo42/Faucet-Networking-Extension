@@ -56,6 +56,15 @@ public:
 	size_t receive();
 
 	/**
+	 * Receive data until the delimiter or the end of the stream is found.
+	 *
+	 * Returns 0 if nothing was received, 1 if a delimited message was
+	 * received and 2 if the remaining undelimited data at the end of the
+	 * stream was received.
+	 */
+	int receiveDelimited(size_t maxSize);
+
+	/**
 	 * True if the connection has been closed in the receiving direction.
 	 */
 	bool isEof();
@@ -102,12 +111,14 @@ private:
 	ConnectionState *state_;
 
 	SendBuffer sendbuffer_;
-	std::string remoteIp;
+	std::string remoteIp_;
 
 	/*
 	 * The following members are only accessed from the client thread and
 	 * don't need synchronization.
 	 */
+	std::string tokenDelimiter_;
+
 	Buffer receiveBuffer_;
 	size_t sendbufferSizeLimit_;
 

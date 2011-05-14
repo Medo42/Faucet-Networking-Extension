@@ -8,8 +8,12 @@
 using namespace boost::asio::ip;
 
 TcpConnected::TcpConnected(TcpSocket &tcpSocket) :
-	ConnectionState(tcpSocket), asyncSendInProgress(false), abortRequested(
-			false), partialReceiveBuffer(), asyncReceiveInProgress(false) {
+	ConnectionState(tcpSocket), asyncSendInProgress(false),
+			abortRequested(false),
+			partialReceiveBuffer(boost::make_shared<std::vector<uint8_t> >()),
+			asyncReceiveInProgress(false),
+			delimiterEnd(0),
+			scannedDelimiter() {
 }
 
 void TcpConnected::enter() {
@@ -20,7 +24,15 @@ void TcpConnected::enter() {
 		// Disable Nagle's algorithm
 		tcp::no_delay nodelay(true);
 		getSocket().set_option(nodelay);
-	} catch(boost::system::system_error &e) {
+
+		// Not sure if these settings are optimal / necessary,
+		// but they seemed to work well in a useless benchmark :P.
+		boost::asio::socket_base::send_buffer_size sbs(0);
+		getSocket().set_option(sbs);
+
+		boost::asio::socket_base::receive_buffer_size rbs(65536);
+		getSocket().set_option(rbs);
+	} catch (boost::system::system_error &e) {
 		enterErrorState(e.code().message());
 		return;
 	}
@@ -36,7 +48,7 @@ void TcpConnected::startAsyncSend() {
 	if (!asyncSendInProgress) {
 		asyncSendInProgress = true;
 		getSocket().async_send(
-				getSendBuffer().committedAsConstBufferSequence(),
+				getSendBuffer().getCommittedData(),
 				boost::bind(&TcpConnected::handleSend, this,
 						socket->shared_from_this(),
 						boost::asio::placeholders::error,
@@ -63,7 +75,7 @@ void TcpConnected::handleSend(boost::shared_ptr<TcpSocket> socket,
 }
 
 bool TcpConnected::isEof() {
-	if (partialReceiveBuffer.size() > 0 || asyncReceiveInProgress) {
+	if (partialReceiveBuffer->size() > 0 || asyncReceiveInProgress) {
 		return false;
 	}
 	try {
@@ -95,75 +107,120 @@ bool TcpConnected::isEof() {
  * @throws
  */
 void TcpConnected::nonblockReceive(size_t maxData) {
-	if(asyncReceiveInProgress) {
+	if (asyncReceiveInProgress) {
 		return;
 	}
 	size_t available = getSocket().available();
 	size_t readAmmount = std::min(maxData, available);
-	size_t recvBufferEndIndex = partialReceiveBuffer.size();
-	partialReceiveBuffer.insert(partialReceiveBuffer.end(), readAmmount, 0);
-	boost::asio::read(getSocket(), boost::asio::buffer(partialReceiveBuffer.data()+recvBufferEndIndex, readAmmount));
+	size_t recvBufferEndIndex = partialReceiveBuffer->size();
+	partialReceiveBuffer->insert(partialReceiveBuffer->end(), readAmmount, 0);
+	boost::asio::read(
+			getSocket(),
+			boost::asio::buffer(
+					partialReceiveBuffer->data() + recvBufferEndIndex,
+					readAmmount));
 }
 
 bool TcpConnected::receive(size_t ammount) {
-	if(asyncReceiveInProgress) {
+	if (asyncReceiveInProgress) {
 		return false;
 	}
 
-	if(partialReceiveBuffer.size() < ammount) {
+	if (partialReceiveBuffer->size() < ammount) {
 		// Try to satisfy the request with a nonblocking read
 		try {
-			nonblockReceive(ammount-partialReceiveBuffer.size());
-		} catch(boost::system::system_error &e) {
+			nonblockReceive(ammount - partialReceiveBuffer->size());
+		} catch (boost::system::system_error &e) {
 			enterErrorState(e.code().message());
 			return false;
 		}
 	}
 
-	if(partialReceiveBuffer.size() >= ammount) {
-		getReceiveBuffer().write(partialReceiveBuffer.data(), ammount);
-		partialReceiveBuffer.erase(partialReceiveBuffer.begin(), partialReceiveBuffer.begin()+ammount);
+	if (partialReceiveBuffer->size() == ammount) {
+		getReceiveBuffer().replaceContent(partialReceiveBuffer);
+		partialReceiveBuffer = boost::make_shared<std::vector<uint8_t> >();
+		delimiterEnd = 0;
+		return true;
+	} else if (partialReceiveBuffer->size() > ammount) {
+		getReceiveBuffer().write(partialReceiveBuffer->data(), ammount);
+		partialReceiveBuffer->erase(partialReceiveBuffer->begin(),
+				partialReceiveBuffer->begin() + ammount);
+		delimiterEnd = 0;
 		return true;
 	} else {
-		size_t remaining = ammount - partialReceiveBuffer.size();
+		size_t remaining = ammount - partialReceiveBuffer->size();
 		startAsyncReceive(remaining);
 		return false;
 	}
 }
 
 void TcpConnected::receive() {
-	if(asyncReceiveInProgress) {
+	if (asyncReceiveInProgress) {
 		return;
 	}
 
 	try {
 		nonblockReceive(std::numeric_limits<size_t>::max());
-		getReceiveBuffer().write(partialReceiveBuffer.data(), partialReceiveBuffer.size());
-		partialReceiveBuffer.clear();
-	} catch(boost::system::system_error &e) {
+		getReceiveBuffer().replaceContent(partialReceiveBuffer);
+		partialReceiveBuffer = boost::make_shared<std::vector<uint8_t> >();
+		delimiterEnd = 0;
+	} catch (boost::system::system_error &e) {
+		enterErrorState(e.code().message());
+	}
+}
+
+int TcpConnected::receiveDelimited(std::string delimiter, size_t maxSize) {
+	if (asyncReceiveInProgress) {
+		return 0;
+	}
+
+	for(std::vector<uint8_t>::iterator iter = partialReceiveBuffer->begin(); iter != partialReceiveBuffer->end(); ++iter) {
+		for(std::string::iterator strIter = delimiter.begin(); strIter != delimiter.end(); strIter++) {
+
+		}
+	}
+
+	if(delimiterEnd > 0) {
+		getReceiveBuffer().write(partialReceiveBuffer->data(), delimiterEnd-scannedDelimiter.size());
+		partialReceiveBuffer->erase(partialReceiveBuffer->begin(),
+				partialReceiveBuffer->begin() + delimiterEnd);
+		delimiterEnd = 0;
+		return true;
+	}
+
+
+
+	try {
+		nonblockReceive(std::numeric_limits<size_t>::max());
+		getReceiveBuffer().replaceContent(partialReceiveBuffer);
+		partialReceiveBuffer = boost::make_shared<std::vector<uint8_t> >();
+	} catch (boost::system::system_error &e) {
 		enterErrorState(e.code().message());
 	}
 }
 
 void TcpConnected::startAsyncReceive(size_t ammount) {
-	if(!asyncReceiveInProgress) {
+	if (!asyncReceiveInProgress) {
 		asyncReceiveInProgress = true;
 
-		size_t recvBufferEndIndex = partialReceiveBuffer.size();
-		partialReceiveBuffer.insert(partialReceiveBuffer.end(), ammount, 0);
-		boost::asio::async_read(getSocket(), boost::asio::buffer(partialReceiveBuffer.data()+recvBufferEndIndex, ammount),
-				boost::bind(
-						&TcpConnected::handleReceive,
-						this,
+		size_t recvBufferEndIndex = partialReceiveBuffer->size();
+		partialReceiveBuffer->insert(partialReceiveBuffer->end(), ammount, 0);
+		boost::asio::async_read(
+				getSocket(),
+				boost::asio::buffer(
+						partialReceiveBuffer->data() + recvBufferEndIndex,
+						ammount),
+				boost::bind(&TcpConnected::handleReceive, this,
 						socket->shared_from_this(),
 						boost::asio::placeholders::error));
 	}
 }
 
-void TcpConnected::handleReceive(boost::shared_ptr<TcpSocket> socket, const boost::system::error_code &error) {
+void TcpConnected::handleReceive(boost::shared_ptr<TcpSocket> socket,
+		const boost::system::error_code &error) {
 	boost::lock_guard<boost::recursive_mutex> guard(getCommonMutex());
 	asyncReceiveInProgress = false;
-	if(error) {
+	if (error) {
 		enterErrorState(error.message());
 	}
 }

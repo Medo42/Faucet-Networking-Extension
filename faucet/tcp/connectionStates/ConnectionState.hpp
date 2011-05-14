@@ -55,6 +55,9 @@ public:
 	virtual void receive() {
 		return;
 	}
+	virtual int receiveDelimited(std::string delimiter, size_t maxSize) {
+		return 0;
+	}
 protected:
 	TcpSocket *socket;
 

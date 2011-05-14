@@ -18,13 +18,16 @@ public:
 	virtual bool isEof();
 	virtual bool receive(size_t ammount);
 	virtual void receive();
+	virtual int receiveDelimited(std::string delimiter, size_t maxSize);
 
 private:
 	bool asyncSendInProgress;
 	bool abortRequested;
 
-	std::vector<uint8_t> partialReceiveBuffer;
+	boost::shared_ptr<std::vector<uint8_t> > partialReceiveBuffer;
 	bool asyncReceiveInProgress;
+
+	std::string delimiterToScan;
 
 	void nonblockReceive(size_t maxData);
 

@@ -5,6 +5,8 @@
 
 #include <boost/integer.hpp>
 #include <boost/utility.hpp>
+#include <boost/shared_ptr.hpp>
+#include <boost/make_shared.hpp>
 
 #include <vector>
 #include <string>
@@ -12,16 +14,16 @@
 #include <cstring>
 
 class Buffer : public Handled, public ReadWritable, boost::noncopyable {
-	std::vector<uint8_t> data;
+	boost::shared_ptr<std::vector<uint8_t> > data;
 	size_t readIndex;
 public:
-	Buffer() : data(), readIndex(0) {}
+	Buffer() : data(boost::make_shared<std::vector<uint8_t> >()), readIndex(0) {}
 
 	/**
 	 * Empty the buffer.
 	 */
 	void clear() {
-		data.clear();
+		data->clear();
 		readIndex = 0;
 	}
 
@@ -29,7 +31,7 @@ public:
 	 * Return the number of bytes currently in the buffer.
 	 */
 	size_t size() const {
-		return data.size();
+		return data->size();
 	}
 
 	/**
@@ -43,7 +45,7 @@ public:
 	 * Set the read position to the given byte index in the buffer.
 	 */
 	void setReadpos(size_t pos) {
-		if(pos<=data.size()) {
+		if(pos<=data->size()) {
 			readIndex = pos;
 		} else {
 			readIndex = size();
@@ -54,7 +56,7 @@ public:
 	 * Append the given array to the end of the buffer.
 	 */
 	void write(const uint8_t *in, size_t size) {
-		data.insert(data.end(), in, in+size);
+		data->insert(data->end(), in, in+size);
 	}
 
 	/**
@@ -66,7 +68,7 @@ public:
 	 */
 	size_t read(uint8_t* out, size_t size) {
 		size = std::min(size, bytesRemaining());
-		memcpy(out, data.data()+readIndex, size);
+		memcpy(out, data->data()+readIndex, size);
 		readIndex += size;
 		return size;
 	}
@@ -78,7 +80,7 @@ public:
 	 */
 	std::string readString(size_t size) {
 		size = std::min(size, bytesRemaining());
-		char *stringStart = (char*)data.data()+readIndex;
+		char *stringStart = (char*)data->data()+readIndex;
 		readIndex += size;
 		return std::string(stringStart, size);
 	}
@@ -104,8 +106,8 @@ public:
 	 * value, the entire buffer will be returned in the string.
 	 */
 	std::string readString() {
-		std::vector<uint8_t>::iterator readIterator = data.begin()+readIndex;
-		size_t len = std::find(readIterator, data.end(), 0) - readIterator;
+		std::vector<uint8_t>::iterator readIterator = data->begin()+readIndex;
+		size_t len = std::find(readIterator, data->end(), 0) - readIterator;
 		std::string result = readString(len);
 
 		// Remove the separator too, unless we just read the entire buffer
@@ -115,12 +117,18 @@ public:
 		return result;
 	}
 
-
+	/**
+	 * Do not keep a reference to the vector outside the buffer.
+	 */
+	void replaceContent(boost::shared_ptr<std::vector<uint8_t> > newData) {
+		data = newData;
+		readIndex = 0;
+	}
 
 	/**
 	 * Get a pointer to the buffer contents
 	 */
 	const uint8_t *getData() const {
-		return data.data();
+		return data->data();
 	}
 };

@@ -31,7 +31,7 @@ public:
 	/**
 	 * Return all committed bytes as a ConstBufferSequence
 	 */
-	std::vector<boost::asio::const_buffer> committedAsConstBufferSequence() const {
+	std::vector<boost::asio::const_buffer> getCommittedData() const {
 		std::vector<boost::asio::const_buffer> result;
 		result.reserve(buffers.size());
 		size_t bytesRemaining = committedBytes;
