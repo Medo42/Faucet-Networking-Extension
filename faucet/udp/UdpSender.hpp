@@ -1,8 +1,8 @@
 #pragma once
 
 #include <faucet/Asio.hpp>
-#include <faucet/Buffer.hpp>
 
+#include <shb/AbstractBuffer.hpp>
 #include <boost/integer.hpp>
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/shared_ptr.hpp>
@@ -18,7 +18,7 @@ class UdpMessage;
 class UdpSender : public boost::enable_shared_from_this<UdpSender> {
 public:
 	UdpSender();
-	void send(boost::shared_ptr<Buffer> buffer, std::string host, uint16_t port);
+	void send(shb::AbstractBuffer& buffer, std::string host, uint16_t port);
 
 private:
 	udp::socket ipv4Socket;

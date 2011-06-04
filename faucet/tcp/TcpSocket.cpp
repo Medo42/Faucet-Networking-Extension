@@ -45,15 +45,7 @@ size_t TcpSocket::read(uint8_t *out, size_t size) {
 	return receiveBuffer_.read(out, size);
 }
 
-std::string TcpSocket::readString(size_t size) {
-	return receiveBuffer_.readString(size);
-}
-
-size_t TcpSocket::bytesRemaining() const {
-	return receiveBuffer_.bytesRemaining();
-}
-
-Buffer &TcpSocket::getReceiveBuffer() {
+shb::AbstractBuffer &TcpSocket::getReceiveBuffer() {
 	return receiveBuffer_;
 }
 
@@ -82,7 +74,7 @@ size_t TcpSocket::receive() {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
 	receiveBuffer_.clear();
 	state_->receive();
-	return receiveBuffer_.size();
+	return receiveBuffer_.getLength();
 }
 
 bool TcpSocket::isEof() {

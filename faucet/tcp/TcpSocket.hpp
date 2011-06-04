@@ -1,14 +1,14 @@
 #pragma once
 
 #include <faucet/Socket.hpp>
-#include <faucet/ReadWritable.hpp>
 #include <faucet/Asio.hpp>
 #include <faucet/tcp/SendBuffer.hpp>
-#include <faucet/Buffer.hpp>
 #include <faucet/tcp/connectionStates/ConnectionState.hpp>
 #include <faucet/tcp/connectionStates/TcpConnecting.hpp>
 #include <faucet/tcp/connectionStates/TcpConnected.hpp>
 #include <faucet/tcp/connectionStates/TcpClosed.hpp>
+
+#include <shb/DefaultMemBuffer.hpp>
 
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/integer.hpp>
@@ -18,7 +18,6 @@
 #include <string>
 
 class TcpSocket: public Socket,
-		public ReadWritable,
 		public boost::enable_shared_from_this<TcpSocket>,
 		boost::noncopyable {
 	friend class ConnectionState;
@@ -33,10 +32,8 @@ public:
 	// Functions required by the ReadWritable interface
 	virtual void write(const uint8_t *in, size_t size);
 	virtual size_t read(uint8_t *out, size_t size);
-	virtual std::string readString(size_t size);
-	virtual size_t bytesRemaining() const;
 
-	Buffer &getReceiveBuffer();
+	shb::AbstractBuffer &getReceiveBuffer();
 
 	size_t getSendbufferSize();
 	void setSendbufferLimit(size_t maxSize);
@@ -108,7 +105,7 @@ private:
 	 * The following members are only accessed from the client thread and
 	 * don't need synchronization.
 	 */
-	Buffer receiveBuffer_;
+	shb::DefaultMemBuffer receiveBuffer_;
 	size_t sendbufferSizeLimit_;
 
 	TcpSocket(boost::shared_ptr<boost::asio::ip::tcp::socket> socket);

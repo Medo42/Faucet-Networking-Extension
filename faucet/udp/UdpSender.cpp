@@ -7,8 +7,8 @@
 
 class UdpMessage {
 public:
-	UdpMessage(size_t sourceSize, const uint8_t *source) : size(sourceSize), buffer(new uint8_t[size]) {
-		memcpy(buffer, source, size);
+	UdpMessage(shb::AbstractBuffer& srcBuffer) : size(srcBuffer.getLength()), buffer(new uint8_t[size]) {
+		srcBuffer.read(buffer, 0, size);
 	}
 
 	~UdpMessage() {
@@ -32,9 +32,9 @@ UdpSender::UdpSender() :
 	ipv6Socket.open(udp::v6(), error);
 }
 
-void UdpSender::send(boost::shared_ptr<Buffer> buffer, std::string host, uint16_t port) {
+void UdpSender::send(shb::AbstractBuffer& buffer, std::string host, uint16_t port) {
 	udp::resolver::query query(host, boost::lexical_cast<std::string>(port), tcp::resolver::query::numeric_service);
-	boost::shared_ptr<UdpMessage> message(new UdpMessage(buffer->size(), buffer->getData()));
+	boost::shared_ptr<UdpMessage> message(new UdpMessage(buffer));
 	resolver.async_resolve(query, boost::bind(
 			&UdpSender::handleResolve,
 			shared_from_this(),

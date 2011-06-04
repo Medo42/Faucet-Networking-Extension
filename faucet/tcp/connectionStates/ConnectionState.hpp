@@ -7,7 +7,10 @@
 
 class TcpSocket;
 class SendBuffer;
-class Buffer;
+
+namespace shb {
+	class AbstractBuffer;
+}
 
 /**
  * Some considerations on using these state objects:
@@ -69,5 +72,5 @@ protected:
 	boost::asio::ip::tcp::socket &getSocket();
 	boost::recursive_mutex &getCommonMutex();
 	SendBuffer &getSendBuffer();
-	Buffer &getReceiveBuffer();
+	shb::AbstractBuffer &getReceiveBuffer();
 };

@@ -30,6 +30,6 @@ SendBuffer &ConnectionState::getSendBuffer() {
 	return socket->sendbuffer_;
 }
 
-Buffer &ConnectionState::getReceiveBuffer() {
+shb::AbstractBuffer &ConnectionState::getReceiveBuffer() {
 	return socket->receiveBuffer_;
 }
