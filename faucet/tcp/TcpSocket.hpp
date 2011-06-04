@@ -8,7 +8,7 @@
 #include <faucet/tcp/connectionStates/TcpConnected.hpp>
 #include <faucet/tcp/connectionStates/TcpClosed.hpp>
 
-#include <shb/DefaultMemBuffer.hpp>
+#include <shared_buffers/DefaultMemBuffer.hpp>
 
 #include <boost/enable_shared_from_this.hpp>
 #include <boost/integer.hpp>

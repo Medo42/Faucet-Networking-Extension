@@ -6,7 +6,7 @@
 #include <faucet/clipped_cast.hpp>
 #include <faucet/GmStringBuffer.hpp>
 
-#include <shb/BufferProxy.hpp>
+#include <shared_buffers/BufferProxy.hpp>
 
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
