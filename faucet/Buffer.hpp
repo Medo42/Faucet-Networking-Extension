@@ -84,40 +84,6 @@ public:
 	}
 
 	/**
-	 * Append a string to the buffer
-	 *
-	 * @param str A 0-terminated string
-	 * @param withDelimiter Whether or not to copy the
-	 * terminating 0 to the buffer
-	 */
-	void writeString(const char *str, bool withDelimiter) {
-		size_t len = strlen(str);
-		if(withDelimiter) {
-			len++;
-		}
-		write(reinterpret_cast<const uint8_t *>(str), len);
-	}
-
-	/**
-	 * Read a 0-terminated string from the buffer and
-	 * return it. If the buffer contains no 0
-	 * value, the entire buffer will be returned in the string.
-	 */
-	std::string readString() {
-		std::vector<uint8_t>::iterator readIterator = data.begin()+readIndex;
-		size_t len = std::find(readIterator, data.end(), 0) - readIterator;
-		std::string result = readString(len);
-
-		// Remove the separator too, unless we just read the entire buffer
-		if(readIndex < size()) {
-			++readIndex;
-		}
-		return result;
-	}
-
-
-
-	/**
 	 * Get a pointer to the buffer contents
 	 */
 	const uint8_t *getData() const {
