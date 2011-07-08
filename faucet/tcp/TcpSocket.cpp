@@ -7,7 +7,7 @@ using namespace boost::asio::ip;
 
 TcpSocket::~TcpSocket() {
 	// Ensure graceful close
-	if(socket_ && socket_->is_open()) {
+	if (socket_ && socket_->is_open()) {
 		boost::system::error_code newError;
 		socket_->shutdown(tcp::socket::shutdown_both, newError);
 		socket_->close();
@@ -62,6 +62,10 @@ size_t TcpSocket::getSendbufferSize() {
 	return sendbuffer_.totalSize();
 }
 
+size_t TcpSocket::getReceivebufferSize() {
+	return receiveBuffer_.size();
+}
+
 void TcpSocket::setSendbufferLimit(size_t maxSize) {
 	sendbufferSizeLimit_ = maxSize;
 }
@@ -97,13 +101,23 @@ void TcpSocket::disconnectAbortive() {
 
 std::string TcpSocket::getRemoteIp() {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
-	return remoteIp;
+	return remoteIp_;
+}
+
+uint16_t TcpSocket::getRemotePort() {
+	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
+	return remotePort_;
+}
+
+uint16_t TcpSocket::getLocalPort() {
+	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
+	return localPort_;
 }
 
 boost::shared_ptr<TcpSocket> TcpSocket::connectTo(const char *host,
 		uint16_t port) {
-	boost::shared_ptr<tcp::socket> asioSocket(new tcp::socket(
-			Asio::getIoService()));
+	boost::shared_ptr<tcp::socket> asioSocket(
+			new tcp::socket(Asio::getIoService()));
 	boost::shared_ptr<TcpSocket> result(new TcpSocket(asioSocket));
 	boost::lock_guard<boost::recursive_mutex> guard(result->commonMutex_);
 	result->state_ = &(result->tcpConnecting_);
@@ -112,7 +126,8 @@ boost::shared_ptr<TcpSocket> TcpSocket::connectTo(const char *host,
 }
 
 boost::shared_ptr<TcpSocket> TcpSocket::error(const std::string &message) {
-	boost::shared_ptr<tcp::socket> asioSocket(new tcp::socket(Asio::getIoService()));
+	boost::shared_ptr<tcp::socket> asioSocket(
+			new tcp::socket(Asio::getIoService()));
 	boost::shared_ptr<TcpSocket> result(new TcpSocket(asioSocket));
 	boost::lock_guard<boost::recursive_mutex> guard(result->commonMutex_);
 	result->state_ = &(result->tcpClosed_);
@@ -120,8 +135,8 @@ boost::shared_ptr<TcpSocket> TcpSocket::error(const std::string &message) {
 	return result;
 }
 
-boost::shared_ptr<TcpSocket> TcpSocket::fromConnectedSocket(boost::shared_ptr<
-		tcp::socket> connectedSocket) {
+boost::shared_ptr<TcpSocket> TcpSocket::fromConnectedSocket(
+		boost::shared_ptr<tcp::socket> connectedSocket) {
 	boost::shared_ptr<TcpSocket> result(new TcpSocket(connectedSocket));
 	boost::lock_guard<boost::recursive_mutex> guard(result->commonMutex_);
 	result->state_ = &(result->tcpConnected_);
@@ -130,10 +145,10 @@ boost::shared_ptr<TcpSocket> TcpSocket::fromConnectedSocket(boost::shared_ptr<
 }
 
 TcpSocket::TcpSocket(boost::shared_ptr<tcp::socket> socket) :
-	commonMutex_(), socket_(socket), tcpConnecting_(*this),
-			tcpConnected_(*this), tcpClosed_(*this), state_(0), sendbuffer_(),
-			receiveBuffer_(), sendbufferSizeLimit_(
-					std::numeric_limits<size_t>::max()) {
+		commonMutex_(), socket_(socket), tcpConnecting_(*this), tcpConnected_(
+				*this), tcpClosed_(*this), state_(0), sendbuffer_(), remoteIp_(), remotePort_(
+				0), localPort_(0), receiveBuffer_(), sendbufferSizeLimit_(
+				std::numeric_limits<size_t>::max()) {
 }
 
 void TcpSocket::enterConnectedState() {

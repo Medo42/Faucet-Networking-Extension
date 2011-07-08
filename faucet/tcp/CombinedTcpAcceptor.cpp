@@ -6,7 +6,8 @@ using namespace boost::asio::ip;
 CombinedTcpAcceptor::CombinedTcpAcceptor(uint16_t port) :
 		v4Acceptor_(TcpAcceptor::listen(tcp::endpoint(tcp::v4(), port))),
 		v6Acceptor_(TcpAcceptor::listen(tcp::endpoint(tcp::v6(), port))),
-		checkV6First_(false) {
+		checkV6First_(false),
+		localPort_(port) {
 }
 
 CombinedTcpAcceptor::~CombinedTcpAcceptor() {
@@ -38,4 +39,8 @@ boost::shared_ptr<TcpSocket> CombinedTcpAcceptor::accept() {
 
 	checkV6First_ = !checkV6First_;
 	return acceptedSocket;
+}
+
+uint16_t CombinedTcpAcceptor::getLocalPort() {
+	return localPort_;
 }

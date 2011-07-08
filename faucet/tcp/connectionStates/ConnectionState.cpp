@@ -14,8 +14,10 @@ void ConnectionState::enterConnectedState() {
 	socket->enterConnectedState();
 }
 
-void ConnectionState::setRemoteIp(std::string ip) {
-	socket->remoteIp = ip;
+void ConnectionState::setEndpointInfo(std::string remoteIp, uint16_t remotePort, uint16_t localPort) {
+	socket->remoteIp_ = remoteIp;
+	socket->remotePort_ = remotePort;
+	socket->localPort_ = localPort;
 }
 
 boost::asio::ip::tcp::socket &ConnectionState::getSocket() {

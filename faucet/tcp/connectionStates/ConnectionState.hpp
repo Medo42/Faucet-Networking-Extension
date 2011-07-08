@@ -65,7 +65,7 @@ protected:
 	 */
 	void enterErrorState(const std::string &message);
 	void enterConnectedState();
-	void setRemoteIp(std::string ip);
+	void setEndpointInfo(std::string remoteIp, uint16_t remotePort, uint16_t localPort);
 	boost::asio::ip::tcp::socket &getSocket();
 	boost::recursive_mutex &getCommonMutex();
 	SendBuffer &getSendBuffer();

@@ -4,9 +4,9 @@
 #include <faucet/tcp/CombinedTcpAcceptor.hpp>
 #include <faucet/Buffer.hpp>
 #include <faucet/udp/UdpSender.hpp>
+#include <faucet/udp/UdpSocket.hpp>
 #include <faucet/clipped_cast.hpp>
 #include <faucet/GmStringBuffer.hpp>
-
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/cast.hpp>
@@ -38,8 +38,19 @@ DLLEXPORT double tcp_connect(char *host, double port) {
 	}
 }
 
+DLLEXPORT double udp_bind(double port) {
+	try {
+		return handles.allocate(UdpSocket::bind(numeric_cast<uint16_t> (port)));
+	} catch (bad_numeric_cast &e) {
+	}
+	boost::system::error_code error = boost::asio::error::make_error_code(
+			boost::asio::error::invalid_argument);
+	return handles.allocate(UdpSocket::error(error.message()));
+}
+
+// TODO: rename to tcp_connecting in 2.0
 DLLEXPORT double socket_connecting(double socketHandle) {
-	boost::shared_ptr<Socket> socket = handles.find<Socket> (socketHandle);
+	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket> (socketHandle);
 	if (socket) {
 		return socket->isConnecting();
 	} else {
@@ -47,6 +58,7 @@ DLLEXPORT double socket_connecting(double socketHandle) {
 	}
 }
 
+// TODO: allow port 0.
 DLLEXPORT double tcp_listen(double port) {
 	uint16_t intPort;
 	try {
@@ -67,7 +79,7 @@ DLLEXPORT double tcp_listen(double port) {
 DLLEXPORT double socket_accept(double handle) {
 	AcceptorPtr acceptor = handles.find<CombinedTcpAcceptor> (handle);
 	if (acceptor) {
-		boost::shared_ptr<Socket> accepted = acceptor->accept();
+		boost::shared_ptr<TcpSocket> accepted = acceptor->accept();
 
 		if (accepted) {
 			return handles.allocate(accepted);
@@ -98,8 +110,8 @@ DLLEXPORT const char *socket_error(double handle) {
 	}
 }
 
+// TODO: Remove in v2
 DLLEXPORT double socket_handle_io() {
-	// TODO: Function left in for compatibility. Remove in v2
 	return 0;
 }
 
@@ -123,6 +135,13 @@ static void destroySocket(double handle, bool hard) {
 	boost::shared_ptr<CombinedTcpAcceptor> acceptor = handles.find<
 			CombinedTcpAcceptor> (handle);
 	if (acceptor) {
+		handles.release(handle);
+		return;
+	}
+
+	boost::shared_ptr<UdpSocket> udpSocket = handles.find<UdpSocket> (handle);
+	if (udpSocket) {
+		udpSocket->close(hard);
 		handles.release(handle);
 		return;
 	}
@@ -212,8 +231,8 @@ DLLEXPORT double write_buffer(double destHandle, double bufferHandle) {
 	boost::shared_ptr<ReadWritable> writable = handles.find<ReadWritable> (
 			destHandle);
 	boost::shared_ptr<Buffer> buffer = handles.find<Buffer> (bufferHandle);
-	boost::shared_ptr<TcpSocket> socket =
-			handles.find<TcpSocket> (bufferHandle);
+	boost::shared_ptr<Socket> socket =
+			handles.find<Socket> (bufferHandle);
 
 	if (writable && buffer) {
 		writable->write(buffer->getData(), buffer->size());
@@ -260,6 +279,7 @@ DLLEXPORT double tcp_eof(double socketHandle) {
 	}
 }
 
+// TODO rename to tcp_send in 2.0
 DLLEXPORT double socket_send(double socketHandle) {
 	boost::shared_ptr<TcpSocket> socket =
 			handles.find<TcpSocket> (socketHandle);
@@ -270,8 +290,7 @@ DLLEXPORT double socket_send(double socketHandle) {
 }
 
 DLLEXPORT double socket_sendbuffer_size(double socketHandle) {
-	boost::shared_ptr<TcpSocket> socket =
-			handles.find<TcpSocket> (socketHandle);
+	boost::shared_ptr<Socket> socket = handles.find<Socket> (socketHandle);
 	if (socket) {
 		return socket->getSendbufferSize();
 	} else {
@@ -280,18 +299,17 @@ DLLEXPORT double socket_sendbuffer_size(double socketHandle) {
 }
 
 DLLEXPORT double socket_receivebuffer_size(double socketHandle) {
-	boost::shared_ptr<TcpSocket> socket =
-			handles.find<TcpSocket> (socketHandle);
+	boost::shared_ptr<Socket> socket = handles.find<Socket> (socketHandle);
 	if (socket) {
-		return socket->getReceiveBuffer().size();
+		return socket->getReceivebufferSize();
 	} else {
 		return 0;
 	}
 }
 
 DLLEXPORT double socket_sendbuffer_limit(double socketHandle, double sizeLimit) {
-	boost::shared_ptr<TcpSocket> socket =
-			handles.find<TcpSocket> (socketHandle);
+	boost::shared_ptr<Socket> socket =
+			handles.find<Socket> (socketHandle);
 	if (socket) {
 		size_t intSize = clipped_cast<size_t> (sizeLimit);
 		if (intSize == 0) {
@@ -422,10 +440,7 @@ DLLEXPORT const char *read_string(double handle, double len) {
  * UDP
  */
 
-DLLEXPORT double udp_send(double bufferHandle, const char *host, double port) {
-	static boost::shared_ptr<UdpSender> udpSender(new UdpSender());
-	BufferPtr buffer = handles.find<Buffer> (bufferHandle);
-
+DLLEXPORT double udp_send(double handle, const char *host, double port) {
 	uint16_t intPort;
 	try {
 		intPort = numeric_cast<uint16_t> (port);
@@ -433,10 +448,30 @@ DLLEXPORT double udp_send(double bufferHandle, const char *host, double port) {
 		intPort = 0;
 	}
 
-	if (intPort != 0 && buffer) {
-		udpSender->send(buffer, host, intPort);
+	if (intPort == 0) {
+		return false;
 	}
-	return 0;
+
+	BufferPtr buffer = handles.find<Buffer> (handle);
+	if(buffer) {
+		static boost::shared_ptr<UdpSender> udpSender(new UdpSender());
+		udpSender->send(buffer, host, intPort);
+		return true;
+	}
+
+	boost::shared_ptr<UdpSocket> sock = handles.find<UdpSocket>(handle);
+	if(sock) {
+		return sock->send(host, intPort);
+	}
+	return false;
+}
+
+DLLEXPORT double udp_receive(double handle) {
+	boost::shared_ptr<UdpSocket> sock = handles.find<UdpSocket>(handle);
+	if(sock) {
+		return sock->receive();
+	}
+	return false;
 }
 
 /**
@@ -462,10 +497,31 @@ DLLEXPORT double set_little_endian(double handle, double littleEndian) {
 }
 
 DLLEXPORT const char* socket_remote_ip(double handle) {
-	boost::shared_ptr<TcpSocket> socket =
-			handles.find<TcpSocket> (handle);
+	boost::shared_ptr<Socket> socket = handles.find<Socket> (handle);
 	if (socket) {
 		return replaceStringReturnBuffer(socket->getRemoteIp());
 	}
 	return "";
+}
+
+DLLEXPORT double socket_local_port(double handle) {
+	boost::shared_ptr<Socket> socket = handles.find<Socket> (handle);
+	if (socket) {
+		return socket->getLocalPort();
+	}
+
+	AcceptorPtr acceptor = handles.find<CombinedTcpAcceptor> (handle);
+	if(acceptor) {
+		return acceptor->getLocalPort();
+	}
+
+	return 0;
+}
+
+DLLEXPORT double socket_remote_port(double handle) {
+	boost::shared_ptr<Socket> socket = handles.find<Socket> (handle);
+	if (socket) {
+		return socket->getRemotePort();
+	}
+	return 0;
 }

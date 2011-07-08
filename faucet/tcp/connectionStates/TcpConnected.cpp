@@ -14,8 +14,9 @@ TcpConnected::TcpConnected(TcpSocket &tcpSocket) :
 
 void TcpConnected::enter() {
 	try {
-		tcp::endpoint endpoint = getSocket().remote_endpoint();
-		setRemoteIp(endpoint.address().to_string());
+		tcp::endpoint remoteEndpoint = getSocket().remote_endpoint();
+		tcp::endpoint localEndpoint = getSocket().local_endpoint();
+		setEndpointInfo(remoteEndpoint.address().to_string(), remoteEndpoint.port(), localEndpoint.port());
 
 		// Disable Nagle's algorithm
 		tcp::no_delay nodelay(true);
@@ -87,8 +88,8 @@ bool TcpConnected::isEof() {
 		}
 	} catch (boost::system::system_error &e) {
 		enterErrorState(e.code().message());
-		return true;
 	}
+	return true;
 }
 
 /**

@@ -26,7 +26,10 @@ public:
 	 * connection is returned. Otherwise a NULL pointer is returned.
 	 */
 	boost::shared_ptr<TcpSocket> accept();
+
+	uint16_t getLocalPort();
 private:
 	boost::shared_ptr<TcpAcceptor> v4Acceptor_, v6Acceptor_;
 	bool checkV6First_;
+	uint16_t localPort_;
 };

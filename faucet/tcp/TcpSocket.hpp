@@ -18,13 +18,12 @@
 #include <string>
 
 class TcpSocket: public Socket,
-		public ReadWritable,
 		public boost::enable_shared_from_this<TcpSocket>,
 		boost::noncopyable {
 	friend class ConnectionState;
 
 public:
-	~TcpSocket();
+	virtual ~TcpSocket();
 
 	virtual bool isConnecting();
 	virtual std::string getErrorMessage();
@@ -36,10 +35,14 @@ public:
 	virtual std::string readString(size_t size);
 	virtual size_t bytesRemaining() const;
 
-	Buffer &getReceiveBuffer();
+	virtual size_t getSendbufferSize();
+	virtual size_t getReceivebufferSize();
+	virtual void setSendbufferLimit(size_t maxSize);
 
-	size_t getSendbufferSize();
-	void setSendbufferLimit(size_t maxSize);
+	virtual Buffer &getReceiveBuffer();
+	virtual std::string getRemoteIp();
+	virtual uint16_t getRemotePort();
+	virtual uint16_t getLocalPort();
 
 	void send();
 	/**
@@ -62,7 +65,6 @@ public:
 
 	void disconnectAbortive();
 
-	std::string getRemoteIp();
 
 	/**
 	 * Create a new socket representing a connection to the
@@ -102,7 +104,9 @@ private:
 	ConnectionState *state_;
 
 	SendBuffer sendbuffer_;
-	std::string remoteIp;
+	std::string remoteIp_;
+	uint16_t remotePort_;
+	uint16_t localPort_;
 
 	/*
 	 * The following members are only accessed from the client thread and
