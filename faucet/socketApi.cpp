@@ -552,6 +552,14 @@ DLLEXPORT double ip_lookup_ready(double lookupHandle) {
 	}
 }
 
+DLLEXPORT double ip_lookup_has_next(double lookupHandle) {
+	boost::shared_ptr<IpLookup> lookup = handles.find<IpLookup>(lookupHandle);
+	if(lookup) {
+		return lookup->hasNext();
+	}
+	return false;
+}
+
 DLLEXPORT const char *ip_lookup_next_result(double lookupHandle) {
 	boost::shared_ptr<IpLookup> lookup = handles.find<IpLookup>(lookupHandle);
 	if(lookup) {

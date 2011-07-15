@@ -21,7 +21,7 @@ boost::shared_ptr<IpLookup> IpLookup::lookup(const char *lookup, const tcp::reso
 	return ipLookup;
 }
 
-IpLookup::IpLookup() : commonMutex_(), resolver_(Asio::getIoService()), result_(), lookupComplete_(false) {}
+IpLookup::IpLookup() : commonMutex_(), resolver_(Asio::getIoService()), result_(), next_(), lookupComplete_(false) {}
 
 void IpLookup::handleResolve(const boost::system::error_code &error,
 		tcp::resolver::iterator endpointIterator) {
@@ -29,6 +29,7 @@ void IpLookup::handleResolve(const boost::system::error_code &error,
 	lookupComplete_ = true;
 	if (!error) {
 		result_ = endpointIterator;
+		loadNext();
 	}
 }
 
@@ -37,18 +38,31 @@ bool IpLookup::ready() {
 	return lookupComplete_;
 }
 
+bool IpLookup::hasNext() {
+	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
+	return !next_.empty();
+}
+
 std::string IpLookup::nextResult() {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
-	if (result_ == tcp::resolver::iterator()) {
-		return "";
-	} else {
+	std::string ip = next_;
+	loadNext();
+	return ip;
+}
+
+void IpLookup::loadNext() {
+	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
+	if (result_ != tcp::resolver::iterator()) {
 		boost::system::error_code ec;
 		std::string ip = result_->endpoint().address().to_string(ec);
 		if(ec) {
 			result_ = tcp::resolver::iterator();
-			return "";
+			next_ = "";
+		} else {
+			++result_;
+			next_ = ip;
 		}
-		++result_;
-		return ip;
+	} else {
+		next_ = "";
 	}
 }
