@@ -7,6 +7,7 @@
 #include <faucet/udp/UdpSocket.hpp>
 #include <faucet/clipped_cast.hpp>
 #include <faucet/GmStringBuffer.hpp>
+#include <faucet/IpLookup.hpp>
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/cast.hpp>
@@ -524,4 +525,67 @@ DLLEXPORT double socket_remote_port(double handle) {
 		return socket->getRemotePort();
 	}
 	return 0;
+}
+
+DLLEXPORT double ip_lookup_create(const char *host) {
+	return handles.allocate(IpLookup::lookup(host));
+}
+
+DLLEXPORT double ipv4_lookup_create(const char *host) {
+	return handles.allocate(IpLookup::lookup(host, boost::asio::ip::tcp::v4()));
+}
+
+DLLEXPORT double ipv6_lookup_create(const char *host) {
+	return handles.allocate(IpLookup::lookup(host, boost::asio::ip::tcp::v6()));
+}
+
+DLLEXPORT double ip_lookup_ready(double lookupHandle) {
+	boost::shared_ptr<IpLookup> lookup = handles.find<IpLookup>(lookupHandle);
+	if(lookup) {
+		return lookup->ready();
+	} else {
+		/*
+		 * We return true here to prevent a lockup in infinite loops waiting for
+		 * the lookup to finish.
+		 */
+		return true;
+	}
+}
+
+DLLEXPORT const char *ip_lookup_next_result(double lookupHandle) {
+	boost::shared_ptr<IpLookup> lookup = handles.find<IpLookup>(lookupHandle);
+	if(lookup) {
+		return replaceStringReturnBuffer(lookup->nextResult());
+	}
+	return "";
+}
+
+DLLEXPORT double ip_lookup_destroy(double lookupHandle) {
+	boost::shared_ptr<IpLookup> lookup = handles.find<IpLookup>(lookupHandle);
+	if(lookup) {
+		handles.release(lookupHandle);
+	}
+	return 0;
+}
+
+DLLEXPORT double ip_is_v4(const char *ip) {
+	boost::system::error_code ec;
+	boost::asio::ip::address_v4::from_string(ip, ec);
+
+	if(!ec) {
+		return true;
+	} else {
+		return false;
+	}
+}
+
+DLLEXPORT double ip_is_v6(const char *ip) {
+	boost::system::error_code ec;
+	boost::asio::ip::address_v6::from_string(ip, ec);
+
+	if(!ec) {
+		return true;
+	} else {
+		return false;
+	}
 }
