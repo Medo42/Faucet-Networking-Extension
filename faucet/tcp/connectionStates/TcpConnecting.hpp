@@ -1,6 +1,7 @@
 #pragma once
 
 #include <faucet/Asio.hpp>
+#include <faucet/V4FirstIterator.hpp>
 #include "ConnectionState.hpp"
 
 #include <boost/shared_ptr.hpp>
@@ -24,21 +25,16 @@ public:
 private:
 	boost::asio::ip::tcp::resolver resolver;
 	bool abortRequested;
-	bool ipv6Attempted;
-	std::string host;
-	std::string port;
 
 	typedef boost::asio::ip::tcp::resolver::protocol_type protocol_type;
-	void startResolve(const protocol_type &protocol);
-
 	void handleResolve(boost::shared_ptr<TcpSocket> tcpSocket,
 			const boost::system::error_code &err,
 			boost::asio::ip::tcp::resolver::iterator endpointIterator);
 
-	void startConnectionAttempt(boost::shared_ptr<TcpSocket> tcpSocket,
-			boost::asio::ip::tcp::resolver::iterator endpointIterator);
+	boost::system::error_code startConnectionAttempt(boost::shared_ptr<TcpSocket> tcpSocket,
+			V4FirstIterator<boost::asio::ip::tcp> endpoints, boost::system::error_code &ec);
 
 	void handleConnect(boost::shared_ptr<TcpSocket> tcpSocket,
 			const boost::system::error_code &err,
-			boost::asio::ip::tcp::resolver::iterator endpointIterator);
+			V4FirstIterator<boost::asio::ip::tcp> endpoints);
 };

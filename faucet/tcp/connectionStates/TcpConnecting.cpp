@@ -10,27 +10,20 @@ using namespace boost::asio::ip;
 
 TcpConnecting::TcpConnecting(TcpSocket &socket) :
 	ConnectionState(socket), resolver(Asio::getIoService()), abortRequested(
-			false), ipv6Attempted(false), host(), port() {
+			false) {
 }
 
 void TcpConnecting::enter(const char *host, uint16_t port) {
-	this->host = host;
-	this->port = boost::lexical_cast<std::string>(port);
-	ipv6Attempted = false;
-	startResolve(tcp::v4());
+	tcp::resolver::query query(host, boost::lexical_cast<std::string>(port),
+			tcp::resolver::query::numeric_service | tcp::resolver::query::address_configured);
+	resolver.async_resolve(query, boost::bind(&TcpConnecting::handleResolve,
+			this, socket->shared_from_this(), boost::asio::placeholders::error,
+			boost::asio::placeholders::iterator));
 }
 
 void TcpConnecting::abort() {
 	resolver.cancel();
 	abortRequested = true;
-}
-
-void TcpConnecting::startResolve(const protocol_type &protocol) {
-	tcp::resolver::query query(protocol, host, port,
-			tcp::resolver::query::numeric_service | tcp::resolver::query::address_configured);
-	resolver.async_resolve(query, boost::bind(&TcpConnecting::handleResolve,
-			this, socket->shared_from_this(), boost::asio::placeholders::error,
-			boost::asio::placeholders::iterator));
 }
 
 void TcpConnecting::handleResolve(boost::shared_ptr<TcpSocket> socket,
@@ -42,33 +35,34 @@ void TcpConnecting::handleResolve(boost::shared_ptr<TcpSocket> socket,
 		return;
 	}
 
-	if (!error) {
-		startConnectionAttempt(socket, endpointIterator);
-	} else if(!ipv6Attempted) {
-		startResolve(tcp::v6());
-		ipv6Attempted = true;
-	} else {
+	if (error) {
 		enterErrorState(error.message());
+		return;
+	}
+
+	V4FirstIterator<tcp> endpoints(endpointIterator);
+	boost::system::error_code ec;
+	if(startConnectionAttempt(socket, endpoints, ec)) {
+		enterErrorState(ec.message());
+		return;
 	}
 }
 
-void TcpConnecting::startConnectionAttempt(boost::shared_ptr<TcpSocket> socket,
-		tcp::resolver::iterator endpointIterator) {
-	boost::system::error_code closeError;
-	if (getSocket().close(closeError)) {
-		Asio::getIoService().post(boost::bind(&TcpConnecting::handleConnect,
-				this, socket, closeError, tcp::resolver::iterator()));
-		return;
+boost::system::error_code TcpConnecting::startConnectionAttempt(boost::shared_ptr<TcpSocket> socket,
+		V4FirstIterator<tcp> endpoints, boost::system::error_code &ec) {
+	if (getSocket().close(ec)) {
+		return ec;
 	}
-	tcp::endpoint endpoint = *endpointIterator;
+	tcp::endpoint endpoint = endpoints.next();
 	getSocket().async_connect(endpoint, boost::bind(
 			&TcpConnecting::handleConnect, this, socket,
-			boost::asio::placeholders::error, ++endpointIterator));
+			boost::asio::placeholders::error, endpoints));
+	return ec;
 }
 
 void TcpConnecting::handleConnect(boost::shared_ptr<TcpSocket> socket,
 		const boost::system::error_code &error,
-		tcp::resolver::iterator endpointIterator) {
+		V4FirstIterator<tcp> endpoints) {
 	boost::lock_guard<boost::recursive_mutex> guard(getCommonMutex());
 
 	if (abortRequested) {
@@ -77,12 +71,14 @@ void TcpConnecting::handleConnect(boost::shared_ptr<TcpSocket> socket,
 
 	if (!error) {
 		enterConnectedState();
-	} else if (endpointIterator != tcp::resolver::iterator()) {
-		startConnectionAttempt(socket, endpointIterator);
-	} else if(!ipv6Attempted) {
-		startResolve(tcp::v6());
-		ipv6Attempted = true;
+	} else if (endpoints.hasNext()) {
+		boost::system::error_code ec;
+		if(startConnectionAttempt(socket, endpoints, ec)) {
+			enterErrorState(ec.message());
+			return;
+		}
 	} else {
 		enterErrorState(error.message());
+		return;
 	}
 }
