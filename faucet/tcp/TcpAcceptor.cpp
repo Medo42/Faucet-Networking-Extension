@@ -4,7 +4,7 @@
 #include <boost/bind.hpp>
 
 TcpAcceptor::TcpAcceptor() :
-		acceptor_(Asio::getIoService()),
+		acceptor_(),
 		socket_(),
 		hasError_(false),
 		errorMessage_(),
@@ -12,26 +12,17 @@ TcpAcceptor::TcpAcceptor() :
 		errorMutex_() {
 }
 
-shared_ptr<TcpAcceptor> TcpAcceptor::listen(const tcp::endpoint &endpoint) {
+shared_ptr<TcpAcceptor> TcpAcceptor::listen(boost::shared_ptr<tcp::acceptor> acceptor) {
 	shared_ptr<TcpAcceptor> result(new TcpAcceptor());
-	try {
-		result->acceptor_.open(endpoint.protocol());
-		result->acceptor_.set_option(tcp::acceptor::reuse_address(true));
-		if(endpoint.protocol() == tcp::v6()) {
-			result->acceptor_.set_option(v6_only(true));
-		}
-		result->acceptor_.bind(endpoint);
-		result->acceptor_.listen();
-
-	} catch(boost::system::system_error &newErr) {
-		boost::system::error_code error;
-		result->acceptor_.close(error);
-		result->hasError_ = true;
-		result->errorMessage_ = newErr.code().message();
-		return result;
-	}
-
+	result->acceptor_ = acceptor;
 	result->startAsyncAccept();
+	return result;
+}
+
+shared_ptr<TcpAcceptor> TcpAcceptor::error(std::string message) {
+	shared_ptr<TcpAcceptor> result(new TcpAcceptor());
+	result->hasError_ = true;
+	result->errorMessage_ = message;
 	return result;
 }
 
@@ -62,12 +53,12 @@ shared_ptr<TcpSocket> TcpAcceptor::accept() {
 
 void TcpAcceptor::close() {
 	boost::system::error_code error;
-	acceptor_.close(error);
+	acceptor_->close(error);
 }
 
 void TcpAcceptor::startAsyncAccept() {
 	shared_ptr<tcp::socket> socket(new tcp::socket(Asio::getIoService()));
-	acceptor_.async_accept(*socket, boost::bind(
+	acceptor_->async_accept(*socket, boost::bind(
 			&TcpAcceptor::handleAccept,
 			shared_from_this(),
 			boost::asio::placeholders::error,

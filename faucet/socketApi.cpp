@@ -3,7 +3,6 @@
 #include <faucet/tcp/TcpSocket.hpp>
 #include <faucet/tcp/CombinedTcpAcceptor.hpp>
 #include <faucet/Buffer.hpp>
-#include <faucet/udp/UdpSender.hpp>
 #include <faucet/udp/UdpSocket.hpp>
 #include <faucet/clipped_cast.hpp>
 #include <faucet/GmStringBuffer.hpp>
@@ -59,22 +58,15 @@ DLLEXPORT double socket_connecting(double socketHandle) {
 	}
 }
 
-// TODO: allow port 0.
 DLLEXPORT double tcp_listen(double port) {
-	uint16_t intPort;
 	try {
-		intPort = numeric_cast<uint16_t> (port);
-	} catch (bad_numeric_cast &e) {
-		intPort = 0;
-	}
-	if (intPort == 0) {
-		boost::system::error_code error = boost::asio::error::make_error_code(
-				boost::asio::error::invalid_argument);
-		return handles.allocate(TcpSocket::error(error.message()));
-	} else {
-		AcceptorPtr acceptor(new CombinedTcpAcceptor(intPort));
+		AcceptorPtr acceptor(new CombinedTcpAcceptor(numeric_cast<uint16_t> (port)));
 		return handles.allocate(acceptor);
+	} catch (bad_numeric_cast &e) {
 	}
+	boost::system::error_code error = boost::asio::error::make_error_code(
+			boost::asio::error::invalid_argument);
+	return handles.allocate(TcpSocket::error(error.message()));
 }
 
 DLLEXPORT double socket_accept(double handle) {
@@ -455,8 +447,10 @@ DLLEXPORT double udp_send(double handle, const char *host, double port) {
 
 	BufferPtr buffer = handles.find<Buffer> (handle);
 	if(buffer) {
-		static boost::shared_ptr<UdpSender> udpSender(new UdpSender());
-		udpSender->send(buffer, host, intPort);
+		boost::shared_ptr<UdpSocket> udpSocket = UdpSocket::bind(0);
+		udpSocket->write(buffer->getData(), buffer->size());
+		udpSocket->send(host, intPort);
+		udpSocket->close(false);
 		return true;
 	}
 

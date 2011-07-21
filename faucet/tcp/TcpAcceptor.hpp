@@ -15,6 +15,9 @@ using namespace boost::asio::ip;
 using boost::shared_ptr;
 class TcpAcceptor : public boost::enable_shared_from_this<TcpAcceptor> {
 public:
+	static shared_ptr<TcpAcceptor> listen(boost::shared_ptr<tcp::acceptor> acceptor);
+	static shared_ptr<TcpAcceptor> error(std::string message);
+
 	virtual ~TcpAcceptor();
 
 	virtual std::string getErrorMessage();
@@ -33,14 +36,10 @@ public:
 	 */
 	void close();
 
-	/**
-	 * Create a new Acceptor that will listen at the given port.
-	 */
-	static shared_ptr<TcpAcceptor> listen(const tcp::endpoint &endpoint);
 private:
 	TcpAcceptor();
-	tcp::acceptor acceptor_;
 
+	shared_ptr<tcp::acceptor> acceptor_;
 	shared_ptr<tcp::socket> socket_;
 
 	bool hasError_;

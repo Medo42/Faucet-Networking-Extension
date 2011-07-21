@@ -4,6 +4,7 @@
 #include <faucet/ReadWritable.hpp>
 #include <faucet/Asio.hpp>
 #include <faucet/Buffer.hpp>
+#include <faucet/V4FirstIterator.hpp>
 
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
@@ -17,12 +18,13 @@
 
 struct QueueItem {
 	QueueItem(boost::shared_ptr<Buffer> buffer,
-			boost::asio::ip::udp::endpoint endpoint) :
-			buffer(buffer), endpoint(endpoint) {
+			std::string hostname, uint16_t port) :
+			buffer(buffer), hostname(hostname), port(port) {
 	}
 
 	boost::shared_ptr<Buffer> buffer;
-	boost::asio::ip::udp::endpoint endpoint;
+	std::string hostname;
+	uint16_t port;
 };
 
 class Queue {
@@ -116,11 +118,14 @@ public:
 private:
 	UdpSocket();
 	void asyncSend();
-	void handleSend(boost::shared_ptr<Buffer> sendBuffer);
+	void handleSend(const boost::system::error_code &err, boost::shared_ptr<Buffer> sendBuffer, V4FirstIterator<boost::asio::ip::udp> endpoints);
 	void asyncReceive(boost::asio::ip::udp::socket *sock, boost::shared_array<uint8_t> recvbuffer);
 	void handleReceive(const boost::system::error_code &err,
 			size_t bytesTransferred, boost::shared_ptr<boost::asio::ip::udp::endpoint> endpoint,
 			boost::asio::ip::udp::socket *sock, boost::shared_array<uint8_t> recvbuffer);
+	void handleResolve(const boost::system::error_code &error,
+			boost::asio::ip::udp::resolver::iterator endpointIterator,
+			boost::shared_ptr<Buffer> buffer);
 	boost::asio::ip::udp::socket *getAppropriateSocket(
 			const boost::asio::ip::udp::endpoint &endpoint);
 
@@ -135,6 +140,7 @@ private:
 
 	boost::asio::ip::udp::socket ipv4socket_;
 	boost::asio::ip::udp::socket ipv6socket_;
+	boost::asio::ip::udp::resolver resolver_;
 
 	bool hasError_;
 	std::string errorMessage_;
