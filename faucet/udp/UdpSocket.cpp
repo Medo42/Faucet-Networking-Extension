@@ -12,7 +12,7 @@ UdpSocket::UdpSocket() :
 				false), ipv4socket_(Asio::getIoService()), ipv6socket_(
 				Asio::getIoService()), resolver_(Asio::getIoService()), hasError_(false), errorMessage_(), localPort_(
 				0), remoteIp_(), remotePort_(), receiveBuffer_(new Buffer()), sendBuffer_(
-				new Buffer()), shutdownRequested_(false) {
+				new Buffer()) {
 }
 
 UdpSocket::~UdpSocket() {
@@ -157,34 +157,19 @@ bool UdpSocket::send(const std::string &ip, uint16_t port) {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
 
 	QueueItem item(sendBuffer_, ip, port);
-	sendqueue_.push(item);
+	bool datagramsDiscarded = sendqueue_.push(item);
 	if(!asyncSendInProgress_) {
 		asyncSend();
 	}
 
 	sendBuffer_.reset(new Buffer());
-	return true;
+	return datagramsDiscarded;
 }
 
 void UdpSocket::handleResolve(const boost::system::error_code &error,
 		udp::resolver::iterator endpointIterator,
 		boost::shared_ptr<Buffer> buffer) {
-	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
-	if(!error) {
-		V4FirstIterator<udp> endpoints(endpointIterator);
-		udp::endpoint endpoint = endpoints.next();
-
-		udp::socket *sock = getAppropriateSocket(endpoint);
-		if(sock->is_open()) {
-			sock->async_send_to(
-					boost::asio::const_buffers_1(buffer->getData(), buffer->size()),
-					endpoint,
-					boost::bind(&UdpSocket::handleSend, shared_from_this(), boost::asio::placeholders::error, buffer, endpoints));
-			return;
-		}
-	}
-	boost::system::error_code hostNotFound = boost::asio::error::host_not_found;
-	handleSend(hostNotFound, buffer, V4FirstIterator<udp>());
+	handleSend(error ? error : boost::asio::error::host_not_found, buffer, V4FirstIterator<udp>(endpointIterator));
 }
 
 bool UdpSocket::receive() {
@@ -197,27 +182,18 @@ bool UdpSocket::receive() {
 	}
 
 	receiveBuffer_ = receivequeue_.peek().buffer;
-	remoteIp_ = receivequeue_.peek().hostname;
-	remotePort_ = receivequeue_.peek().port;
+	remoteIp_ = receivequeue_.peek().remoteHost;
+	remotePort_ = receivequeue_.peek().remotePort;
 	receivequeue_.pop();
 	return true;
 }
 
-void UdpSocket::close(bool hard) {
+void UdpSocket::close() {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
-	if(hard || !asyncSendInProgress_) {
-		shutdown();
-	} else {
-		shutdownRequested_ = true;
-	}
-}
-
-void UdpSocket::shutdown() {
-	boost::system::error_code ec;
 	sendqueue_.clear();
 	receivequeue_.clear();
-	ipv4socket_.close(ec);
-	ipv6socket_.close(ec);
+	sendBuffer_->clear();
+	receiveBuffer_->clear();
 }
 
 std::string UdpSocket::getRemoteIp() {
@@ -240,12 +216,12 @@ void UdpSocket::asyncSend() {
 	asyncSendInProgress_ = true;
 
 	boost::system::error_code ec;
-	udp::endpoint endpoint(address::from_string(item.hostname, ec), item.port);
+	udp::endpoint endpoint(address::from_string(item.remoteHost, ec), item.remotePort);
 	if(!ec) {
 		udp::resolver::iterator iter;
 		handleResolve(ec, udp::resolver::iterator::create(endpoint, "", ""), item.buffer);
 	} else {
-		udp::resolver::query query(item.hostname, boost::lexical_cast<std::string>(item.port), udp::resolver::query::numeric_service | udp::resolver::query::address_configured);
+		udp::resolver::query query(item.remoteHost, boost::lexical_cast<std::string>(item.remotePort), udp::resolver::query::numeric_service | udp::resolver::query::address_configured);
 		resolver_.async_resolve(query, boost::bind(&UdpSocket::handleResolve, shared_from_this(),
 				boost::asio::placeholders::error, boost::asio::placeholders::iterator, sendqueue_.peek().buffer));
 	}
@@ -279,10 +255,6 @@ void UdpSocket::handleSend(const boost::system::error_code &err, boost::shared_p
 			return;
 		}
 	}
-
-	if(shutdownRequested_ && !asyncSendInProgress_) {
-		shutdown();
-	}
 }
 
 void UdpSocket::asyncReceive(boost::asio::ip::udp::socket *sock,
@@ -293,27 +265,31 @@ void UdpSocket::asyncReceive(boost::asio::ip::udp::socket *sock,
 	sock->async_receive_from(
 			boost::asio::mutable_buffers_1(recvbuffer.get(), 65536),
 			*endpoint,
-			boost::bind(&UdpSocket::handleReceive, shared_from_this(),
+			boost::bind(&UdpSocket::handleReceive, boost::weak_ptr<UdpSocket>(shared_from_this()),
 					boost::asio::placeholders::error,
 					boost::asio::placeholders::bytes_transferred, endpoint,
 					sock, recvbuffer));
 }
 
-void UdpSocket::handleReceive(const boost::system::error_code &err,
+void UdpSocket::handleReceive(boost::weak_ptr<UdpSocket> ptr, const boost::system::error_code &err,
 		size_t bytesTransferred,
 		boost::shared_ptr<boost::asio::ip::udp::endpoint> endpoint,
 		boost::asio::ip::udp::socket *sock,
 		boost::shared_array<uint8_t> recvbuffer) {
-	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
+	boost::shared_ptr<UdpSocket> sockPtr = ptr.lock();
+	if(!sockPtr) {
+		return;
+	}
+
+	boost::lock_guard<boost::recursive_mutex> guard(sockPtr->commonMutex_);
 	if (!err) {
 		boost::shared_ptr<Buffer> buffer = boost::make_shared<Buffer>();
 		buffer->write(recvbuffer.get(), bytesTransferred);
 		boost::system::error_code ec;
-		receivequeue_.push(QueueItem(buffer, endpoint->address().to_string(ec), endpoint->port()));
+		sockPtr->receivequeue_.push(QueueItem(buffer, endpoint->address().to_string(ec), endpoint->port()));
+		sockPtr->asyncReceive(sock, recvbuffer);
 	} else if (!sock->is_open()) {
-		hasError_ = true;
-		errorMessage_ = err.message();
-		return;
+		sockPtr->hasError_ = true;
+		sockPtr->errorMessage_ = err.message();
 	}
-	asyncReceive(sock, recvbuffer);
 }

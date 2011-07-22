@@ -134,7 +134,9 @@ static void destroySocket(double handle, bool hard) {
 
 	boost::shared_ptr<UdpSocket> udpSocket = handles.find<UdpSocket> (handle);
 	if (udpSocket) {
-		udpSocket->close(hard);
+		if(hard) {
+			udpSocket->close();
+		}
 		handles.release(handle);
 		return;
 	}
@@ -445,12 +447,12 @@ DLLEXPORT double udp_send(double handle, const char *host, double port) {
 		return false;
 	}
 
+	// TODO: Modify to use a single UDP socket, allocated at first use.
 	BufferPtr buffer = handles.find<Buffer> (handle);
 	if(buffer) {
 		boost::shared_ptr<UdpSocket> udpSocket = UdpSocket::bind(0);
 		udpSocket->write(buffer->getData(), buffer->size());
 		udpSocket->send(host, intPort);
-		udpSocket->close(false);
 		return true;
 	}
 
