@@ -19,8 +19,8 @@ void TcpConnected::enter() {
 		setEndpointInfo(remoteEndpoint.address().to_string(), remoteEndpoint.port(), localEndpoint.port());
 
 		// Disable Nagle's algorithm
-		tcp::no_delay nodelay(true);
-		getSocket().set_option(nodelay);
+		getSocket().set_option(tcp::no_delay(true));
+		getSocket().non_blocking(true);
 	} catch(boost::system::system_error &e) {
 		enterErrorState(e.code().message());
 		return;
@@ -70,13 +70,9 @@ bool TcpConnected::isEof() {
 	try {
 		uint8_t nonsenseBuffer;
 		tcp::socket *asioSocket = &getSocket();
-		boost::asio::socket_base::non_blocking_io command(true);
-		asioSocket->io_control(command);
 		boost::system::error_code error;
 		asioSocket->receive(boost::asio::buffer(&nonsenseBuffer, 1),
 				asioSocket->message_peek, error);
-		command = false;
-		asioSocket->io_control(command);
 		if (error == boost::asio::error::eof) {
 			return true;
 		} else if (error == boost::asio::error::would_block) {
