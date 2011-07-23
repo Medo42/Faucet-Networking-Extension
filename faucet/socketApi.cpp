@@ -21,6 +21,7 @@ using boost::numeric::bad_numeric_cast;
 typedef boost::shared_ptr<Buffer> BufferPtr;
 typedef boost::shared_ptr<CombinedTcpAcceptor> AcceptorPtr;
 HandleMap handles;
+boost::shared_ptr<UdpSocket> defaultUdpSocket;
 
 DLLEXPORT double tcp_connect(char *host, double port) {
 	uint16_t intPort;
@@ -320,7 +321,9 @@ DLLEXPORT double dllStartup() {
 	return 0;
 }
 
+// TODO: Abortive close for all sockets
 DLLEXPORT double dllShutdown() {
+	defaultUdpSocket.reset();
 	handles.releaseAll();
 	Asio::shutdown();
 	return 0;
@@ -447,12 +450,13 @@ DLLEXPORT double udp_send(double handle, const char *host, double port) {
 		return false;
 	}
 
-	// TODO: Modify to use a single UDP socket, allocated at first use.
 	BufferPtr buffer = handles.find<Buffer> (handle);
 	if(buffer) {
-		boost::shared_ptr<UdpSocket> udpSocket = UdpSocket::bind(0);
-		udpSocket->write(buffer->getData(), buffer->size());
-		udpSocket->send(host, intPort);
+		if(!defaultUdpSocket) {
+			defaultUdpSocket = UdpSocket::bind(0);
+		}
+		defaultUdpSocket->write(buffer->getData(), buffer->size());
+		defaultUdpSocket->send(host, intPort);
 		return true;
 	}
 
