@@ -20,8 +20,8 @@ using boost::numeric::bad_numeric_cast;
 
 typedef boost::shared_ptr<Buffer> BufferPtr;
 typedef boost::shared_ptr<CombinedTcpAcceptor> AcceptorPtr;
-HandleMap handles;
-boost::shared_ptr<UdpSocket> defaultUdpSocket;
+HandleMap handles = HandleMap();
+boost::shared_ptr<UdpSocket> defaultUdpSocket = boost::shared_ptr<UdpSocket>();
 
 DLLEXPORT double tcp_connect(char *host, double port) {
 	uint16_t intPort;
