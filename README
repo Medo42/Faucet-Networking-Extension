@@ -1,6 +1,11 @@
-This is Faucet Networking, a Game Maker extension for easy integration of
-networking into Game Maker games. It is distributed under the ISC license, which is short
-and simple enough that I don't have to explain it, just read the LICENSE file.
+This is Faucet Networking, a Game Maker extension by Simeon Maxein (MedO) for easy
+integration of networking into Game Maker games. It is distributed under the ISC license,
+which is short and simple enough that I don't have to explain it, just read the LICENSE
+file.
+
+I have worked many days to create this library and support its users. If you want to
+support me in return, you can use flattr:
+https://flattr.com/thing/350329/The-Faucet-Networking-extension
 
 You can find the source code for this project at Github:
 https://github.com/Medo42/Faucet-Networking-Extension/
