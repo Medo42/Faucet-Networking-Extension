@@ -153,10 +153,10 @@ uint16_t UdpSocket::getLocalPort() {
 	return localPort_;
 }
 
-bool UdpSocket::send(const std::string &ip, uint16_t port) {
+bool UdpSocket::send(const std::string &host, uint16_t port) {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
 
-	QueueItem item(sendBuffer_, ip, port);
+	QueueItem item(sendBuffer_, host, port);
 	bool datagramsDiscarded = sendqueue_.push(item);
 	if(!asyncSendInProgress_) {
 		asyncSend();
@@ -223,7 +223,7 @@ void UdpSocket::asyncSend() {
 	} else {
 		udp::resolver::query query(item.remoteHost, boost::lexical_cast<std::string>(item.remotePort), udp::resolver::query::numeric_service | udp::resolver::query::address_configured);
 		resolver_.async_resolve(query, boost::bind(&UdpSocket::handleResolve, shared_from_this(),
-				boost::asio::placeholders::error, boost::asio::placeholders::iterator, sendqueue_.peek().buffer));
+				boost::asio::placeholders::error, boost::asio::placeholders::iterator, item.buffer));
 	}
 }
 
@@ -238,15 +238,14 @@ udp::socket *UdpSocket::getAppropriateSocket(const udp::endpoint &endpoint) {
 void UdpSocket::handleSend(const boost::system::error_code &err, boost::shared_ptr<Buffer> buffer, V4FirstIterator<udp> endpoints) {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
 
-	if(!err) {
-		asyncSendInProgress_ = false;
+	if(err && endpoints.hasNext()) {
+		udp::endpoint endpoint;
+		udp::socket *sock;
+		do {
+			endpoint = endpoints.next();
+			sock = getAppropriateSocket(endpoint);
+		} while(!sock->is_open() && endpoints.hasNext());
 
-		if (!sendqueue_.isEmpty()) {
-			asyncSend();
-		}
-	} else if(endpoints.hasNext()) {
-		udp::endpoint endpoint = endpoints.next();
-		udp::socket *sock = getAppropriateSocket(endpoint);
 		if(sock->is_open()) {
 			sock->async_send_to(
 					boost::asio::const_buffers_1(buffer->getData(), buffer->size()),
@@ -254,6 +253,12 @@ void UdpSocket::handleSend(const boost::system::error_code &err, boost::shared_p
 					boost::bind(&UdpSocket::handleSend, shared_from_this(), boost::asio::placeholders::error, buffer, endpoints));
 			return;
 		}
+	}
+
+	asyncSendInProgress_ = false;
+
+	if (!sendqueue_.isEmpty()) {
+		asyncSend();
 	}
 }
 
