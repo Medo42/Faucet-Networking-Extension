@@ -13,6 +13,7 @@ class TcpSocket;
 
 using namespace boost::asio::ip;
 using boost::shared_ptr;
+// TODO: Seperate error reporting for ipv4 and ipv6
 class TcpAcceptor : public boost::enable_shared_from_this<TcpAcceptor> {
 public:
 	static shared_ptr<TcpAcceptor> listen(boost::shared_ptr<tcp::acceptor> acceptor);

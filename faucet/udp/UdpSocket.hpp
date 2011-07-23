@@ -17,6 +17,7 @@
 #include <boost/utility.hpp>
 #include <string>
 
+// TODO: Seperate error reporting for ipv4 and ipv6
 class UdpSocket: public Socket,
 		public boost::enable_shared_from_this<UdpSocket>,
 		boost::noncopyable {
@@ -48,9 +49,6 @@ public:
 
 	void close();
 
-	/**
-	 * Create an error socket with the given parameter as error message
-	 */
 	static boost::shared_ptr<UdpSocket> error(const std::string &message);
 	static boost::shared_ptr<UdpSocket> bind(uint16_t port);
 
