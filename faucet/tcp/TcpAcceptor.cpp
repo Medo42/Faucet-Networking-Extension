@@ -53,7 +53,9 @@ shared_ptr<TcpSocket> TcpAcceptor::accept() {
 
 void TcpAcceptor::close() {
 	boost::system::error_code error;
-	acceptor_->close(error);
+	if(acceptor_) {
+		acceptor_->close(error);
+	}
 }
 
 void TcpAcceptor::startAsyncAccept() {
