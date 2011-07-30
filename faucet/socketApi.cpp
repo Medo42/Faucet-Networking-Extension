@@ -12,6 +12,7 @@
 #include <boost/cast.hpp>
 
 #include <limits>
+#include <algorithm>
 
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
@@ -235,6 +236,28 @@ DLLEXPORT double write_buffer(double destHandle, double bufferHandle) {
 	} else if (writable && socket) {
 		writable->write(socket->getReceiveBuffer().getData(),
 				socket->getReceiveBuffer().size());
+	}
+	return 0;
+}
+
+DLLEXPORT double write_buffer_part(double destHandle, double bufferHandle, double ammount) {
+	boost::shared_ptr<ReadWritable> dest = handles.find<ReadWritable> (destHandle);
+	boost::shared_ptr<ReadWritable> source = handles.find<ReadWritable> (bufferHandle);
+
+	size_t intAmmount = clipped_cast<size_t> (ammount);
+
+	if (dest && source) {
+		uint8_t tempBuffer[256];
+		intAmmount = std::min(intAmmount, source->bytesRemaining());
+		size_t fullBuffers = intAmmount/256;
+		size_t lastBuffer = intAmmount%256;
+		for(size_t i=0; i<fullBuffers; i++) {
+			source->read(tempBuffer, 256);
+			dest->write(tempBuffer, 256);
+		}
+		source->read(tempBuffer, lastBuffer);
+		dest->write(tempBuffer, lastBuffer);
+		return intAmmount;
 	}
 	return 0;
 }
