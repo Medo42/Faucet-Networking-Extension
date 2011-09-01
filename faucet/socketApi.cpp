@@ -13,6 +13,7 @@
 
 #include <limits>
 #include <algorithm>
+#include <cstdio>
 
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
@@ -454,6 +455,66 @@ DLLEXPORT const char *read_string(double handle, double len) {
 		return replaceStringReturnBuffer(str);
 	} else {
 		return "";
+	}
+}
+
+// Read the entire file, appending it to the end of the buffer
+DLLEXPORT double append_file_to_buffer(double handle, const char *filename) {
+	BufferPtr buffer = handles.find<Buffer> (handle);
+	if (!buffer) {
+		return -10;
+	}
+
+	FILE *f = fopen(filename, "rb");
+	if(f == NULL) {
+		return -1;	// File not found
+	}
+	fseek(f, 0, SEEK_END);
+	long signedSize = ftell(f);
+	fseek(f, 0, SEEK_SET);
+	if(signedSize < 0) {
+		fclose(f);
+		return -2;	// File too large
+	}
+
+	size_t size = signedSize;
+	uint8_t *tempBuffer = (uint8_t*)malloc(size);
+	if(tempBuffer == 0) {
+		fclose(f);
+		return -3; // Not enough memory
+	}
+
+	if(fread(tempBuffer, sizeof(uint8_t), size, f) != size) {
+		free(tempBuffer);
+		fclose(f);
+		return -4; // Read error
+	}
+
+	buffer->write(tempBuffer, size);
+
+	free(tempBuffer);
+	fclose(f);
+	return 1;	// Success
+}
+
+// Overwrite or create the file provided with the contents of the buffer
+DLLEXPORT double write_buffer_to_file(double handle, const char *filename) {
+	BufferPtr buffer = handles.find<Buffer> (handle);
+	if (!buffer) {
+		return -10;
+	}
+
+	FILE *f = fopen(filename, "wb");
+	if(f == NULL) {
+		return -1;	// Cannot open file
+	}
+
+	if(fwrite(buffer->getData(), sizeof(uint8_t), buffer->size(), f) != buffer->size()) {
+		fclose(f);
+		return -2;	// I/O-Error writing to the file
+	} else {
+		fclose(f);
+		return 1; // Success
 	}
 }
 
