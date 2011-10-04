@@ -52,6 +52,7 @@ shared_ptr<TcpSocket> TcpAcceptor::accept() {
 }
 
 void TcpAcceptor::close() {
+	boost::lock_guard<boost::recursive_mutex> guard(socketMutex_);
 	boost::system::error_code error;
 	if(acceptor_) {
 		acceptor_->close(error);
@@ -68,12 +69,16 @@ void TcpAcceptor::startAsyncAccept() {
 }
 
 void TcpAcceptor::handleAccept(const boost::system::error_code &error, shared_ptr<tcp::socket> socket) {
+	boost::lock_guard<boost::recursive_mutex> guard(socketMutex_);
 	if(!error) {
-		boost::lock_guard<boost::recursive_mutex> guard(socketMutex_);
 		socket_ = socket;
 	} else {
-		boost::lock_guard<boost::recursive_mutex> guard(errorMutex_);
-		hasError_ = true;
-		errorMessage_ = error.message();
+		if(acceptor_->is_open()) {
+			startAsyncAccept();
+		} else {
+			boost::lock_guard<boost::recursive_mutex> guard(errorMutex_);
+			hasError_ = true;
+			errorMessage_ = error.message();
+		}
 	}
 }
