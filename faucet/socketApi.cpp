@@ -224,6 +224,28 @@ DLLEXPORT double write_string(double handle, const char *str) {
 	return 0;
 }
 
+DLLEXPORT double write_buffer_part(double destHandle, double bufferHandle, double ammount) {
+	boost::shared_ptr<ReadWritable> dest = handles.find<ReadWritable> (destHandle);
+	boost::shared_ptr<ReadWritable> source = handles.find<ReadWritable> (bufferHandle);
+
+	size_t intAmmount = clipped_cast<size_t> (ammount);
+
+	if (dest && source) {
+		uint8_t tempBuffer[4096];
+		intAmmount = std::min(intAmmount, source->bytesRemaining());
+		size_t fullBuffers = intAmmount/4096;
+		size_t lastBuffer = intAmmount%4096;
+		for(size_t i=0; i<fullBuffers; i++) {
+			source->read(tempBuffer, 4096);
+			dest->write(tempBuffer, 4096);
+		}
+		source->read(tempBuffer, lastBuffer);
+		dest->write(tempBuffer, lastBuffer);
+		return intAmmount;
+	}
+	return 0;
+}
+
 DLLEXPORT double write_buffer(double destHandle, double bufferHandle) {
 	boost::shared_ptr<ReadWritable> writable = handles.find<ReadWritable> (
 			destHandle);
@@ -232,32 +254,13 @@ DLLEXPORT double write_buffer(double destHandle, double bufferHandle) {
 			handles.find<Socket> (bufferHandle);
 
 	if (writable && buffer) {
-		writable->write(buffer->getData(), buffer->size());
+		size_t oldReadPos = buffer->size()-buffer->bytesRemaining();
+		buffer->setReadpos(0);
+		write_buffer_part(destHandle, bufferHandle, buffer->size());
+		buffer->setReadpos(oldReadPos);
 	} else if (writable && socket) {
 		writable->write(socket->getReceiveBuffer().getData(),
 				socket->getReceiveBuffer().size());
-	}
-	return 0;
-}
-
-DLLEXPORT double write_buffer_part(double destHandle, double bufferHandle, double ammount) {
-	boost::shared_ptr<ReadWritable> dest = handles.find<ReadWritable> (destHandle);
-	boost::shared_ptr<ReadWritable> source = handles.find<ReadWritable> (bufferHandle);
-
-	size_t intAmmount = clipped_cast<size_t> (ammount);
-
-	if (dest && source) {
-		uint8_t tempBuffer[256];
-		intAmmount = std::min(intAmmount, source->bytesRemaining());
-		size_t fullBuffers = intAmmount/256;
-		size_t lastBuffer = intAmmount%256;
-		for(size_t i=0; i<fullBuffers; i++) {
-			source->read(tempBuffer, 256);
-			dest->write(tempBuffer, 256);
-		}
-		source->read(tempBuffer, lastBuffer);
-		dest->write(tempBuffer, lastBuffer);
-		return intAmmount;
 	}
 	return 0;
 }
