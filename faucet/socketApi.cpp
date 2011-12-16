@@ -623,3 +623,38 @@ DLLEXPORT double ip_is_v6(const char *ip) {
 		return false;
 	}
 }
+
+/**
+ * Some bit manipulation functions
+ */
+DLLEXPORT double bit_get(double source, double bitnum) {
+	int8_t intbitnum = clipped_cast<int8_t>(bitnum);
+	if(intbitnum < 0 || intbitnum > 63) {
+		return 0;
+	}
+
+	int64_t intsource = clipped_cast<int64_t>(source);
+	return (intsource & ((static_cast<int64_t>(1))<<intbitnum)) != 0 ? 1 : 0;
+}
+
+DLLEXPORT double bit_set(double source, double bitnum, double value) {
+	int8_t intbitnum = clipped_cast<int8_t>(bitnum);
+	if(intbitnum < 0 || intbitnum > 63) {
+		return source;
+	}
+
+	int64_t intsource = clipped_cast<int64_t>(source);
+	if(value>=0.5) {
+		return intsource |= (static_cast<int64_t>(1) << intbitnum);
+	} else {
+		return intsource &= ~(static_cast<int64_t>(1) << intbitnum);
+	}
+}
+
+static uint8_t build_bit(double in, uint8_t place) {
+	return in>=0.5 ? (1<<place) : 0;
+}
+
+DLLEXPORT double build_ubyte(double b7, double b6, double b5, double b4, double b3, double b2, double b1, double b0) {
+	return build_bit(b7,7) | build_bit(b6,6) | build_bit(b5,5) | build_bit(b4,4) | build_bit(b3,3) | build_bit(b2,2) | build_bit(b1,1) | build_bit(b0,0);
+}
