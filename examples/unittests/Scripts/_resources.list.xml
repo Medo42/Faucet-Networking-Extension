@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<resources>
+  <resource name="assert" type="GROUP"/>
+  <resource name="bufferTests" type="GROUP"/>
+  <resource name="ip_function_tests" type="GROUP"/>
+  <resource name="testBuffers" type="RESOURCE"/>
+  <resource name="testIpFunctions" type="RESOURCE"/>
+  <resource name="testUdpSending" type="RESOURCE"/>
+  <resource name="testTcpConnecting" type="RESOURCE"/>
+  <resource name="testBitFunctions" type="RESOURCE"/>
+</resources>

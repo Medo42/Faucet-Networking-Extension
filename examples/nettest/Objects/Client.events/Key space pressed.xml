@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<event category="KEYPRESS" id="32">
+  <actions>
+    <action id="603" library="1">
+      <!--action name: Code-->
+      <kind>CODE</kind>
+      <allowRelative>false</allowRelative>
+      <question>false</question>
+      <canApplyTo>true</canApplyTo>
+      <actionType>CODE</actionType>
+      <functionName/>
+      <relative>false</relative>
+      <not>false</not>
+      <appliesTo>.self</appliesTo>
+      <arguments>
+        <argument kind="STRING">if(socket == noone) {
+    crlf = chr(13)+chr(10);
+    socket = tcp_connect("www.ganggarrison.com", 80);
+    write_string(socket, "GET / HTTP/1.0"+crlf+crlf);
+    socket_send(socket);
+    file = file_bin_open("startpage.http",1); 
+}
+</argument>
+      </arguments>
+    </action>
+  </actions>
+</event>

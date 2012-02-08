@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<constants>
+  <constant name="PADDLES_UPDATE" value="1"/>
+  <constant name="BALL_UPDATE" value="2"/>
+  <constant name="PLAYER_SCORE" value="3"/>
+</constants>

@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<event category="DRAW" id="0">
+  <actions>
+    <action id="603" library="1">
+      <!--action name: Code-->
+      <kind>CODE</kind>
+      <allowRelative>false</allowRelative>
+      <question>false</question>
+      <canApplyTo>true</canApplyTo>
+      <actionType>CODE</actionType>
+      <functionName/>
+      <relative>false</relative>
+      <not>false</not>
+      <appliesTo>.self</appliesTo>
+      <arguments>
+        <argument kind="STRING">if(opponentSocket &lt; 0 &amp;&amp; room) {
+    draw_set_halign(fa_center);
+    draw_set_color(c_white);
+    draw_text(room_width/2, room_height/2, "Waiting for connection...");
+}
+</argument>
+      </arguments>
+    </action>
+  </actions>
+</event>

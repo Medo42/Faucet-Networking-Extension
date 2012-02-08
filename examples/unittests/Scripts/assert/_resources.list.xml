@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<resources>
+  <resource name="assertEquals" type="RESOURCE"/>
+  <resource name="assertTrue" type="RESOURCE"/>
+  <resource name="assertFalse" type="RESOURCE"/>
+  <resource name="assertNonNegative" type="RESOURCE"/>
+  <resource name="assertNegative" type="RESOURCE"/>
+</resources>

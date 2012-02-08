@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<resources>
+  <resource name="GameServer" type="RESOURCE"/>
+  <resource name="Client" type="RESOURCE"/>
+  <resource name="Paddle" type="RESOURCE"/>
+  <resource name="RightPaddle" type="RESOURCE"/>
+  <resource name="LeftPaddle" type="RESOURCE"/>
+  <resource name="Ball" type="RESOURCE"/>
+  <resource name="ScorePanel" type="RESOURCE"/>
+</resources>

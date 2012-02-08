@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<event category="CREATE" id="0">
+  <actions>
+    <action id="603" library="1">
+      <!--action name: Code-->
+      <kind>CODE</kind>
+      <allowRelative>false</allowRelative>
+      <question>false</question>
+      <canApplyTo>true</canApplyTo>
+      <actionType>CODE</actionType>
+      <functionName/>
+      <relative>false</relative>
+      <not>false</not>
+      <appliesTo>.self</appliesTo>
+      <arguments>
+        <argument kind="STRING">acceptor = tcp_listen(12345);
+if(socket_has_error(acceptor)) {
+    show_message("Unable to start server: "+socket_error(acceptor));
+    game_end();
+}
+
+opponentSocket = -1;
+frame = 0;
+</argument>
+      </arguments>
+    </action>
+  </actions>
+</event>

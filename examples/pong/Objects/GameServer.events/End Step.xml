@@ -1,0 +1,45 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<event category="STEP" id="2">
+  <actions>
+    <action id="603" library="1">
+      <!--action name: Code-->
+      <kind>CODE</kind>
+      <allowRelative>false</allowRelative>
+      <question>false</question>
+      <canApplyTo>true</canApplyTo>
+      <actionType>CODE</actionType>
+      <functionName/>
+      <relative>false</relative>
+      <not>false</not>
+      <appliesTo>.self</appliesTo>
+      <arguments>
+        <argument kind="STRING">if(opponentSocket &lt; 0) {
+    opponentSocket = socket_accept(acceptor);
+    if(opponentSocket &gt; 0) {
+        socket_sendbuffer_limit(opponentSocket, 65536);
+        room_goto(PongRoom);
+    }
+} else {
+    // Send the current state to the client
+    // In a game with more players you wouldn't send all the state
+    // to all players every frame - it takes too much bandwidth.
+    
+    write_ubyte(opponentSocket, 5);
+    write_ubyte(opponentSocket, PADDLES_UPDATE);
+    write_ushort(opponentSocket, LeftPaddle.y);
+    write_ushort(opponentSocket, RightPaddle.y);
+    
+    write_ubyte(opponentSocket, 9);
+    write_ubyte(opponentSocket, BALL_UPDATE);
+    write_ushort(opponentSocket, Ball.x);
+    write_ushort(opponentSocket, Ball.y);
+    write_short(opponentSocket, Ball.hspeed*256);
+    write_short(opponentSocket, Ball.vspeed*256);
+    
+    socket_send(opponentSocket);
+}
+</argument>
+      </arguments>
+    </action>
+  </actions>
+</event>

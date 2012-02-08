@@ -1,0 +1,13 @@
+buffer1 = buffer_create();
+assertEquals(0, buffer_bytes_left(buffer1), "Wrong number of bytes left");
+write_float(buffer1, 100.25);
+assertEquals(4, buffer_bytes_left(buffer1), "Wrong number of bytes left");
+write_short(buffer1, 100);
+assertEquals(6, buffer_bytes_left(buffer1), "Wrong number of bytes left");
+read_float(buffer1);
+assertEquals(2, buffer_bytes_left(buffer1), "Wrong number of bytes left");
+read_float(buffer1);
+assertEquals(0, buffer_bytes_left(buffer1), "Wrong number of bytes left");
+write_short(buffer1, 100);
+buffer_destroy(buffer1);
+assertEquals(0, buffer_bytes_left(buffer1), "Wrong number of bytes left");

@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<event category="CREATE" id="0">
+  <actions>
+    <action id="603" library="1">
+      <!--action name: Code-->
+      <kind>CODE</kind>
+      <allowRelative>false</allowRelative>
+      <question>false</question>
+      <canApplyTo>true</canApplyTo>
+      <actionType>CODE</actionType>
+      <functionName/>
+      <relative>false</relative>
+      <not>false</not>
+      <appliesTo>.self</appliesTo>
+      <arguments>
+        <argument kind="STRING">var serverHost;
+serverHost = get_string("Please enter the server's IP address or hostname", "127.0.0.1");
+
+serverSocket = tcp_connect(serverHost, 12345);
+socket_sendbuffer_limit(serverSocket, 65536);
+
+nextByteIsHeader = true;
+expectedBytes = 1;
+
+room_goto(PongRoom);
+</argument>
+      </arguments>
+    </action>
+  </actions>
+</event>

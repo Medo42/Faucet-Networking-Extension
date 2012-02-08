@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<event category="STEP" id="2">
+  <actions>
+    <action id="603" library="1">
+      <!--action name: Code-->
+      <kind>CODE</kind>
+      <allowRelative>false</allowRelative>
+      <question>false</question>
+      <canApplyTo>true</canApplyTo>
+      <actionType>CODE</actionType>
+      <functionName/>
+      <relative>false</relative>
+      <not>false</not>
+      <appliesTo>.self</appliesTo>
+      <arguments>
+        <argument kind="STRING">// Bounce on the top and bottom screen borders
+if(bbox_top &lt; 0) {
+    vspeed = -vspeed;
+    y += 2*(-bbox_top);
+    sound_play(BumpSnd);
+} else if(bbox_bottom &gt; room_height) {
+    vspeed = -vspeed;
+    y -= 2*(bbox_bottom - room_height);
+    sound_play(BumpSnd);
+}
+
+// Check if one player has scored
+// The server dictates when a player scores, so only the server
+// should do this check. Otherwise the player would raise the score
+// here AND when it receives the notificaiton from the server.
+if(global.isHost) {
+    var playerScored;
+    playerScored = 0;
+    if(x&lt;0) {
+        playerScored = 2;
+    } else if(x&gt;room_width) {
+        playerScored = 1;
+    }
+
+    if(playerScored != 0) {
+        doPlayerScore(playerScored);
+    }
+}
+</argument>
+      </arguments>
+    </action>
+  </actions>
+</event>

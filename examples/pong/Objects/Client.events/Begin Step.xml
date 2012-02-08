@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<event category="STEP" id="1">
+  <actions>
+    <action id="603" library="1">
+      <!--action name: Code-->
+      <kind>CODE</kind>
+      <allowRelative>false</allowRelative>
+      <question>false</question>
+      <canApplyTo>true</canApplyTo>
+      <actionType>CODE</actionType>
+      <functionName/>
+      <relative>false</relative>
+      <not>false</not>
+      <appliesTo>.self</appliesTo>
+      <arguments>
+        <argument kind="STRING">/* Here we process messages from the server.
+ * See the game constants for the message type definitions.
+ * 
+ * The protocol is relatively simple: Every message is preceded by a "header" 
+ * consisting of one byte for the message body length. This is followed by
+ * another byte for the message type. The rest of the message depends on the message type.
+ */
+ 
+if(socket_has_error(serverSocket)) {
+    show_message("The connection to the server was lost:" + socket_error(serverSocket));
+    game_end();
+}
+
+while(tcp_receive(serverSocket, expectedBytes)) {
+    if(nextByteIsHeader) {
+        expectedBytes = read_ubyte(serverSocket);
+        nextByteIsHeader = false;
+    } else {
+        var messageType;
+        messageType = read_ubyte(serverSocket);
+        switch(messageType) {
+        case PADDLES_UPDATE:
+            LeftPaddle.y = read_ushort(serverSocket);
+            RightPaddle.y = read_ushort(serverSocket);
+            break;
+            
+        case BALL_UPDATE:
+            Ball.x = read_ushort(serverSocket);
+            Ball.y = read_ushort(serverSocket);
+            
+            var newHspeed, newVspeed;
+            newHspeed = read_short(serverSocket)/256;
+            newVspeed = read_short(serverSocket)/256;
+            
+            // Check if we missed a bump (speed in any direction was inverted)
+            if(newHspeed*Ball.hspeed &lt; 0 or newVspeed*Ball.vspeed &lt; 0) {
+                sound_play(BumpSnd);
+            }
+            
+            Ball.hspeed = newHspeed;
+            Ball.vspeed = newVspeed;
+            break;
+            
+        case PLAYER_SCORE:
+            doPlayerScore(read_ubyte(serverSocket));
+            break;
+            
+        default:
+            // Just ignore unknown messages
+        }
+        
+        nextByteIsHeader = true;
+        expectedBytes = 1;
+    }
+}
+
+// Now we send our mouse position to the server, so that it can set our paddle position
+write_short(serverSocket, mouse_y);
+socket_send(serverSocket);
+</argument>
+      </arguments>
+    </action>
+  </actions>
+</event>

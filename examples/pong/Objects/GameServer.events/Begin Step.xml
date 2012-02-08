@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<event category="STEP" id="1">
+  <actions>
+    <action id="603" library="1">
+      <!--action name: Code-->
+      <kind>CODE</kind>
+      <allowRelative>false</allowRelative>
+      <question>false</question>
+      <canApplyTo>true</canApplyTo>
+      <actionType>CODE</actionType>
+      <functionName/>
+      <relative>false</relative>
+      <not>false</not>
+      <appliesTo>.self</appliesTo>
+      <arguments>
+        <argument kind="STRING">if(opponentSocket &lt; 0) {
+    // The game hasn't started yet
+    exit;
+}
+
+if(socket_has_error(opponentSocket)) {
+    show_message("Lost connection to the client: "+socket_error(opponentSocket));
+    game_end();
+}
+
+// As the server, we move the left paddle
+with(LeftPaddle) {
+    y = mouse_y;
+    clipPaddlePosition();
+}
+
+// Handle input from the client
+// This is just a single unsigned short which tells the position of his paddle.
+// We don't want to lag behind if we receive more than one in each frame, so
+// we'll just process as many messages as there are available.
+while(tcp_receive(opponentSocket, 2)) {
+    with(RightPaddle) {
+        y = read_short(other.opponentSocket);
+        clipPaddlePosition();
+    }
+}
+</argument>
+      </arguments>
+    </action>
+  </actions>
+</event>

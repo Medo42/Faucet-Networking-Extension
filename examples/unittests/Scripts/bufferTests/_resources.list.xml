@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<resources>
+  <resource name="testBufferCreate" type="RESOURCE"/>
+  <resource name="testBufferDestroy" type="RESOURCE"/>
+  <resource name="testBufferClear" type="RESOURCE"/>
+  <resource name="testBufferSize" type="RESOURCE"/>
+  <resource name="testBufferBytesLeft" type="RESOURCE"/>
+  <resource name="testBufferSetReadpos" type="RESOURCE"/>
+  <resource name="testBufferReadWrite" type="RESOURCE"/>
+</resources>

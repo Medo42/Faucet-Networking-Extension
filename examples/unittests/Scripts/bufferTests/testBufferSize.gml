@@ -1,0 +1,10 @@
+buffer1 = buffer_create();
+assertEquals(0, buffer_size(buffer1), "Wrong buffer size");
+write_float(buffer1, 100.25);
+assertEquals(4, buffer_size(buffer1), "Wrong buffer size");
+write_short(buffer1, 100);
+assertEquals(6, buffer_size(buffer1), "Wrong buffer size");
+read_float(buffer1);
+assertEquals(6, buffer_size(buffer1), "Wrong buffer size");
+buffer_destroy(buffer1);
+assertEquals(0, buffer_size(buffer1), "Wrong buffer size");
