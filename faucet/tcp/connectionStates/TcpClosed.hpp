@@ -11,6 +11,8 @@ private:
 
 public:
 	TcpClosed(TcpSocket &tcpSocket);
+	virtual ~TcpClosed() {}
+
 	void enterError(const std::string &error);
 	void enterClosed();
 

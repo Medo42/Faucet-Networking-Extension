@@ -7,6 +7,8 @@
 class TcpConnected: public ConnectionState {
 public:
 	TcpConnected(TcpSocket &tcpSocket);
+	virtual ~TcpConnected() {}
+
 	void enter();
 
 	virtual void abort();

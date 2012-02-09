@@ -20,6 +20,8 @@ private:
 	}
 
 public:
+	ReadWritable() : littleEndian_(littleEndianDefault_) {}
+	virtual ~ReadWritable() {}
 
 	virtual void write(const uint8_t *in, size_t size) = 0;
 
@@ -67,7 +69,6 @@ public:
 		return static_cast<double>(value);
 	}
 
-	ReadWritable() : littleEndian_(littleEndianDefault_) {}
 	void setLittleEndian(bool littleEndian) { littleEndian_ = littleEndian; }
 	static void setLittleEndianDefault(bool littleEndianDefault) { littleEndianDefault_ = littleEndianDefault; }
 };

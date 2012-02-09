@@ -11,6 +11,8 @@
 class TcpConnecting: public ConnectionState {
 public:
 	TcpConnecting(TcpSocket &socket);
+	virtual ~TcpConnecting() {}
+
 	void enter(const char *host, uint16_t port);
 	virtual void abort();
 	virtual bool isConnecting() {

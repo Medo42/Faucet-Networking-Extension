@@ -27,6 +27,8 @@ class Buffer;
  */
 class ConnectionState {
 public:
+	virtual ~ConnectionState() {}
+
 	/**
 	 * Abort all running operations, or at least make sure that
 	 * no further action is taken that would change the TcpSocket.

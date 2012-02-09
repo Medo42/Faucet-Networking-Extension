@@ -8,7 +8,7 @@ class TcpAcceptor;
 class TcpSocket;
 
 /**
- * This class combines two TcpAcceptors, one for IPv4 and once for IPv6.
+ * This class combines two TcpAcceptors, one for IPv4 and one for IPv6.
  * Both will listen on the same port, but on top their respective protocol.
  * The intention is to hide IPv4/IPv6 differences from the library user
  * and allow dual stack operation.
