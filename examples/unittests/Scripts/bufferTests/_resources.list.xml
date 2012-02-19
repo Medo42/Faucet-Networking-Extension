@@ -7,4 +7,5 @@
   <resource name="testBufferBytesLeft" type="RESOURCE"/>
   <resource name="testBufferSetReadpos" type="RESOURCE"/>
   <resource name="testBufferReadWrite" type="RESOURCE"/>
+  <resource name="testFileFunctions" type="RESOURCE"/>
 </resources>
