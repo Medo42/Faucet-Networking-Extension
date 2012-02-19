@@ -463,8 +463,9 @@ DLLEXPORT const char *read_string(double handle, double len) {
 
 // Read the entire file, appending it to the end of the buffer
 DLLEXPORT double append_file_to_buffer(double handle, const char *filename) {
-	BufferPtr buffer = handles.find<Buffer> (handle);
-	if (!buffer) {
+	boost::shared_ptr<ReadWritable> readWritable = handles.find<ReadWritable> (
+			handle);
+	if (!readWritable) {
 		return -10;
 	}
 
@@ -493,7 +494,7 @@ DLLEXPORT double append_file_to_buffer(double handle, const char *filename) {
 		return -4; // Read error
 	}
 
-	buffer->write(tempBuffer, size);
+	readWritable->write(tempBuffer, size);
 
 	free(tempBuffer);
 	fclose(f);
@@ -503,16 +504,20 @@ DLLEXPORT double append_file_to_buffer(double handle, const char *filename) {
 // Overwrite or create the file provided with the contents of the buffer
 DLLEXPORT double write_buffer_to_file(double handle, const char *filename) {
 	BufferPtr buffer = handles.find<Buffer> (handle);
-	if (!buffer) {
+	boost::shared_ptr<Socket> socket = handles.find<Socket> (handle);
+
+	if(!buffer && !socket) {
 		return -10;
 	}
+
+	Buffer &srcBuffer = buffer ? *buffer : socket->getReceiveBuffer();
 
 	FILE *f = fopen(filename, "wb");
 	if(f == NULL) {
 		return -1;	// Cannot open file
 	}
 
-	if(fwrite(buffer->getData(), sizeof(uint8_t), buffer->size(), f) != buffer->size()) {
+	if(fwrite(srcBuffer.getData(), sizeof(uint8_t), srcBuffer.size(), f) != srcBuffer.size()) {
 		fclose(f);
 		return -2;	// I/O-Error writing to the file
 	} else {
