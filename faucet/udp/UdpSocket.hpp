@@ -33,6 +33,7 @@ public:
 	virtual size_t read(uint8_t *out, size_t size);
 	virtual std::string readString(size_t size);
 	virtual size_t bytesRemaining() const;
+	virtual void setReadpos(size_t pos);
 
 	virtual size_t getSendbufferSize();
 	virtual size_t getReceivebufferSize();

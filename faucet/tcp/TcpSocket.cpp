@@ -53,6 +53,10 @@ size_t TcpSocket::bytesRemaining() const {
 	return receiveBuffer_.bytesRemaining();
 }
 
+void TcpSocket::setReadpos(size_t pos) {
+	receiveBuffer_.setReadpos(pos);
+}
+
 Buffer &TcpSocket::getReceiveBuffer() {
 	return receiveBuffer_;
 }

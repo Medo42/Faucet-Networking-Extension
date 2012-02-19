@@ -391,18 +391,18 @@ DLLEXPORT double buffer_size(double handle) {
 }
 
 DLLEXPORT double buffer_bytes_left(double handle) {
-	BufferPtr buffer = handles.find<Buffer> (handle);
-	if (buffer) {
-		return buffer->bytesRemaining();
+	boost::shared_ptr<ReadWritable> readWritable = handles.find<ReadWritable> (handle);
+	if (readWritable) {
+		return readWritable->bytesRemaining();
 	} else {
 		return 0;
 	}
 }
 
 DLLEXPORT double buffer_set_readpos(double handle, double newPos) {
-	BufferPtr buffer = handles.find<Buffer> (handle);
-	if (buffer) {
-		buffer->setReadpos(clipped_cast<size_t> (newPos));
+	boost::shared_ptr<ReadWritable> readWritable = handles.find<ReadWritable> (handle);
+	if (readWritable) {
+		readWritable->setReadpos(clipped_cast<size_t> (newPos));
 	}
 	return 0;
 }

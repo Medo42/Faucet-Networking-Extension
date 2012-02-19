@@ -37,6 +37,8 @@ public:
 
 	virtual size_t bytesRemaining() const = 0;
 
+	virtual void setReadpos(size_t pos) = 0;
+
 	/**
 	 * Convert a double to the target integer type and write it to the
 	 * given writable. Fractional numbers are rounded to the nearest integer.

@@ -132,6 +132,10 @@ size_t UdpSocket::bytesRemaining() const {
 	return receiveBuffer_->bytesRemaining();
 }
 
+void UdpSocket::setReadpos(size_t pos) {
+	return receiveBuffer_->setReadpos(pos);
+}
+
 size_t UdpSocket::getSendbufferSize() {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
 	return sendqueue_.getMemSize() + sendBuffer_->size();
