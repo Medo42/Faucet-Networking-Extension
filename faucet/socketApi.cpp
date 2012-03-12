@@ -7,6 +7,8 @@
 #include <faucet/clipped_cast.hpp>
 #include <faucet/GmStringBuffer.hpp>
 #include <faucet/IpLookup.hpp>
+#include <faucet/ReadWritable.hpp>
+
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/cast.hpp>
@@ -344,11 +346,11 @@ DLLEXPORT double socket_sendbuffer_limit(double socketHandle, double sizeLimit) 
 }
 
 DLLEXPORT double dllStartup() {
+	ReadWritable::setLittleEndianDefault(false);
 	Asio::startup();
 	return 0;
 }
 
-// TODO: Abortive close for all sockets
 DLLEXPORT double dllShutdown() {
 	defaultUdpSocket.reset();
 	handles.releaseAll();
