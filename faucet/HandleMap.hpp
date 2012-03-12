@@ -15,8 +15,8 @@ using boost::numeric::bad_numeric_cast;
  * The objects must extend the "Handled" class. Objects are handled and
  * stored as shared_ptr references to allow flexible lifecycle management.
  *
- * The handle 0 is never used, to prevent errors when users check for >0
- * instead of >=0
+ * The handle 0 is never used, so that valid handles always evaluate to
+ * true in Game Maker.
  */
 class HandleMap {
 	typedef boost::shared_ptr<Handled> HandledPtr;
