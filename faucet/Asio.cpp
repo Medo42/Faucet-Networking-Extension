@@ -26,10 +26,15 @@ void Asio::shutdown() {
 		return;
 	}
 	delete work;
+
 	ioService->stop();
 	butler->join();
 	delete butler;
 	delete ioService;
+
+	work = 0;
+	butler = 0;
+	ioService = 0;
 }
 
 boost::asio::io_service *Asio::ioService = 0;
