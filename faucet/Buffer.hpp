@@ -11,6 +11,9 @@
 #include <algorithm>
 #include <cstring>
 
+#define _WIN32_WINNT 0x0501
+#include <windows.h>
+
 class Buffer : public Handled, public ReadWritable, boost::noncopyable {
 	std::vector<uint8_t> data;
 	size_t readIndex;
