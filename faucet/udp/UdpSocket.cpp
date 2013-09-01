@@ -286,6 +286,7 @@ void UdpSocket::handleReceive(boost::weak_ptr<UdpSocket> ptr, const boost::syste
 		boost::shared_array<uint8_t> recvbuffer) {
 	boost::shared_ptr<UdpSocket> sockPtr = ptr.lock();
 	if(!sockPtr) {
+		// The UdpSocket has been destroyed or has errored out, no need to keep receiving
 		return;
 	}
 
@@ -295,9 +296,9 @@ void UdpSocket::handleReceive(boost::weak_ptr<UdpSocket> ptr, const boost::syste
 		buffer->write(recvbuffer.get(), bytesTransferred);
 		boost::system::error_code ec;
 		sockPtr->receivequeue_.push(QueueItem(buffer, endpoint->address().to_string(ec), endpoint->port()));
+	}
+
+	if(sock->is_open()) {
 		sockPtr->asyncReceive(sock, recvbuffer);
-	} else if (!sock->is_open()) {
-		sockPtr->hasError_ = true;
-		sockPtr->errorMessage_ = err.message();
 	}
 }
