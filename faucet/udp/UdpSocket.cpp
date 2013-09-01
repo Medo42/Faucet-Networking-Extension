@@ -222,7 +222,6 @@ void UdpSocket::asyncSend() {
 	boost::system::error_code ec;
 	udp::endpoint endpoint(address::from_string(item.remoteHost, ec), item.remotePort);
 	if(!ec) {
-		udp::resolver::iterator iter;
 		handleResolve(ec, udp::resolver::iterator::create(endpoint, "", ""), item.buffer);
 	} else {
 		udp::resolver::query query(item.remoteHost, boost::lexical_cast<std::string>(item.remotePort), udp::resolver::query::numeric_service | udp::resolver::query::address_configured);
