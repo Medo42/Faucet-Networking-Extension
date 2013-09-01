@@ -1,5 +1,7 @@
 #include "UdpSocket.hpp"
 
+#include "broadcastAddrs.hpp"
+
 #include <boost/lexical_cast.hpp>
 #include <boost/make_shared.hpp>
 #include <boost/bind.hpp>
@@ -48,6 +50,7 @@ boost::shared_ptr<UdpSocket> UdpSocket::bind(uint16_t portnr) {
 	if (portnr == 0) {
 		try {
 			socketPtr->ipv6socket_.open(udp::v6());
+			socketPtr->ipv6socket_.set_option(udp::socket::broadcast(true));
 			socketPtr->ipv6socket_.set_option(v6_only(false));
 			socketPtr->ipv6socket_.bind(udp::endpoint(udp::v6(), portnr));
 			portnr = socketPtr->ipv6socket_.local_endpoint().port();
@@ -59,6 +62,7 @@ boost::shared_ptr<UdpSocket> UdpSocket::bind(uint16_t portnr) {
 
 	try {
 		socketPtr->ipv4socket_.open(udp::v4());
+		socketPtr->ipv4socket_.set_option(udp::socket::broadcast(true));
 		socketPtr->ipv4socket_.bind(udp::endpoint(udp::v4(), portnr));
 		portnr = socketPtr->ipv4socket_.local_endpoint().port();
 	} catch (boost::system::system_error &e) {
@@ -71,6 +75,7 @@ boost::shared_ptr<UdpSocket> UdpSocket::bind(uint16_t portnr) {
 		// We didn't create a dual stack socket earlier, try simple v6
 		try {
 			socketPtr->ipv6socket_.open(udp::v6());
+			socketPtr->ipv6socket_.set_option(udp::socket::broadcast(true));
 			socketPtr->ipv6socket_.set_option(v6_only(true), ignoredError);
 			socketPtr->ipv6socket_.bind(udp::endpoint(udp::v6(), portnr));
 			portnr = socketPtr->ipv6socket_.local_endpoint().port();
@@ -168,6 +173,26 @@ bool UdpSocket::send(const std::string &host, uint16_t port) {
 
 	sendBuffer_.reset(new Buffer());
 	return datagramsDiscarded;
+}
+
+bool UdpSocket::broadcast(uint16_t port) {
+	std::vector<boost::asio::ip::address_v4> addrs = findLocalBroadcastAddresses();
+
+	bool anyDiscarded = false;
+	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
+
+	for(size_t i=0; i<addrs.size(); i++) {
+		QueueItem item(sendBuffer_, addrs[i].to_string(), port);
+		anyDiscarded |= sendqueue_.push(item);
+	}
+
+	if(!asyncSendInProgress_) {
+		asyncSend();
+	}
+
+	sendBuffer_.reset(new Buffer());
+
+	return anyDiscarded;
 }
 
 void UdpSocket::handleResolve(const boost::system::error_code &error,
@@ -268,8 +293,7 @@ void UdpSocket::handleSend(const boost::system::error_code &err, boost::shared_p
 void UdpSocket::asyncReceive(boost::asio::ip::udp::socket *sock,
 		boost::shared_array<uint8_t> recvbuffer) {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
-	boost::shared_ptr<udp::endpoint> endpoint =
-			boost::make_shared<udp::endpoint>();
+	boost::shared_ptr<udp::endpoint> endpoint = boost::make_shared<udp::endpoint>();
 	sock->async_receive_from(
 			boost::asio::mutable_buffers_1(recvbuffer.get(), 65536),
 			*endpoint,

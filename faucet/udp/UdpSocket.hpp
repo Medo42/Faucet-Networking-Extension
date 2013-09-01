@@ -46,6 +46,7 @@ public:
 	virtual uint16_t getLocalPort();
 
 	bool send(const std::string &host, uint16_t port);
+	bool broadcast(uint16_t port);
 	bool receive();
 
 	void close();

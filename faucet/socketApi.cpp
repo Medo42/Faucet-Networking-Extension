@@ -532,6 +532,24 @@ DLLEXPORT double write_buffer_to_file(double handle, const char *filename) {
  * UDP
  */
 
+static boost::shared_ptr<UdpSocket> getDefaultUdpSocket() {
+	if(!defaultUdpSocket) {
+		defaultUdpSocket = UdpSocket::bind(0);
+	}
+	return defaultUdpSocket;
+}
+
+static boost::shared_ptr<UdpSocket> getUdpSocketOrPrepareDefaultSocket(double handle) {
+	BufferPtr buffer = handles.find<Buffer> (handle);
+	if(buffer) {
+		auto defaultSocket = getDefaultUdpSocket();
+		defaultSocket->write(buffer->getData(), buffer->size());
+		return defaultSocket;
+	}
+
+	return handles.find<UdpSocket>(handle);
+}
+
 DLLEXPORT double udp_send(double handle, const char *host, double port) {
 	uint16_t intPort;
 	try {
@@ -544,19 +562,28 @@ DLLEXPORT double udp_send(double handle, const char *host, double port) {
 		return false;
 	}
 
-	BufferPtr buffer = handles.find<Buffer> (handle);
-	if(buffer) {
-		if(!defaultUdpSocket) {
-			defaultUdpSocket = UdpSocket::bind(0);
-		}
-		defaultUdpSocket->write(buffer->getData(), buffer->size());
-		defaultUdpSocket->send(host, intPort);
-		return true;
-	}
-
-	boost::shared_ptr<UdpSocket> sock = handles.find<UdpSocket>(handle);
+	boost::shared_ptr<UdpSocket> sock = getUdpSocketOrPrepareDefaultSocket(handle);
 	if(sock) {
 		return sock->send(host, intPort);
+	}
+	return false;
+}
+
+DLLEXPORT double udp_broadcast(double handle, double port) {
+	uint16_t intPort;
+	try {
+		intPort = numeric_cast<uint16_t> (port);
+	} catch (bad_numeric_cast &e) {
+		intPort = 0;
+	}
+
+	if (intPort == 0) {
+		return false;
+	}
+
+	boost::shared_ptr<UdpSocket> sock = getUdpSocketOrPrepareDefaultSocket(handle);
+	if(sock) {
+		return sock->broadcast(intPort);
 	}
 	return false;
 }
