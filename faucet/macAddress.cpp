@@ -9,7 +9,6 @@
 
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
-// Overwrite or create the file provided with the contents of the buffer
 DLLEXPORT const char* mac_addrs() {
 	PIP_ADAPTER_ADDRESSES addrs = NULL;
 	DWORD dwRetVal = 0;
