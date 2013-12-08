@@ -12,6 +12,7 @@
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/cast.hpp>
+#include <boost/thread/recursive_mutex.hpp>
 
 #include <limits>
 #include <algorithm>
@@ -24,10 +25,16 @@ using boost::numeric::bad_numeric_cast;
 
 typedef boost::shared_ptr<Buffer> BufferPtr;
 typedef boost::shared_ptr<CombinedTcpAcceptor> AcceptorPtr;
+typedef boost::lock_guard<boost::recursive_mutex> MutexLock;
+
 HandleMap handles = HandleMap();
 boost::shared_ptr<UdpSocket> defaultUdpSocket = boost::shared_ptr<UdpSocket>();
 
+// TODO: Make the actual implementation properly thread safe instead of making the API single-threaded
+boost::recursive_mutex *apiMutex = new boost::recursive_mutex;
+
 DLLEXPORT double tcp_connect(char *host, double port) {
+	MutexLock lock(*apiMutex);
 	uint16_t intPort;
 	try {
 		intPort = numeric_cast<uint16_t> (port);
@@ -44,6 +51,7 @@ DLLEXPORT double tcp_connect(char *host, double port) {
 }
 
 DLLEXPORT double udp_bind(double port) {
+	MutexLock lock(*apiMutex);
 	try {
 		return handles.allocate(UdpSocket::bind(numeric_cast<uint16_t> (port)));
 	} catch (bad_numeric_cast &e) {
@@ -55,6 +63,7 @@ DLLEXPORT double udp_bind(double port) {
 
 // TODO: rename to tcp_connecting in 2.0
 DLLEXPORT double socket_connecting(double socketHandle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<TcpSocket> socket = handles.find<TcpSocket> (socketHandle);
 	if (socket) {
 		return socket->isConnecting();
@@ -64,6 +73,7 @@ DLLEXPORT double socket_connecting(double socketHandle) {
 }
 
 DLLEXPORT double tcp_listen(double port) {
+	MutexLock lock(*apiMutex);
 	try {
 		AcceptorPtr acceptor(new CombinedTcpAcceptor(numeric_cast<uint16_t> (port)));
 		return handles.allocate(acceptor);
@@ -75,6 +85,7 @@ DLLEXPORT double tcp_listen(double port) {
 }
 
 DLLEXPORT double socket_accept(double handle) {
+	MutexLock lock(*apiMutex);
 	AcceptorPtr acceptor = handles.find<CombinedTcpAcceptor> (handle);
 	if (acceptor) {
 		boost::shared_ptr<TcpSocket> accepted = acceptor->accept();
@@ -87,6 +98,7 @@ DLLEXPORT double socket_accept(double handle) {
 }
 
 DLLEXPORT double socket_has_error(double handle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<Fallible> fallible = handles.find<Fallible> (handle);
 
 	if (fallible) {
@@ -97,6 +109,7 @@ DLLEXPORT double socket_has_error(double handle) {
 }
 
 DLLEXPORT const char *socket_error(double handle) {
+	MutexLock lock(*apiMutex);
 	static std::string stringbuf;
 	boost::shared_ptr<Fallible> fallible = handles.find<Fallible> (handle);
 
@@ -114,6 +127,7 @@ DLLEXPORT double socket_handle_io() {
 }
 
 static void destroySocket(double handle, bool hard) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<TcpSocket> tcpSocket = handles.find<TcpSocket> (handle);
 	if (tcpSocket) {
 		if (hard) {
@@ -167,6 +181,7 @@ DLLEXPORT double socket_destroy_abortive(double handle) {
  */
 template<typename IntType>
 static double writeIntValue(double handle, double value) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<ReadWritable> writable = handles.find<ReadWritable> (
 			handle);
 	if (writable) {
@@ -200,6 +215,7 @@ DLLEXPORT double write_int(double handle, double value) {
 }
 
 DLLEXPORT double write_float(double handle, double value) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<ReadWritable> writable = handles.find<ReadWritable> (
 			handle);
 	if (writable) {
@@ -209,6 +225,7 @@ DLLEXPORT double write_float(double handle, double value) {
 }
 
 DLLEXPORT double write_double(double handle, double value) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<ReadWritable> writable = handles.find<ReadWritable> (
 			handle);
 	if (writable) {
@@ -218,6 +235,7 @@ DLLEXPORT double write_double(double handle, double value) {
 }
 
 DLLEXPORT double write_string(double handle, const char *str) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<ReadWritable> writable = handles.find<ReadWritable> (
 			handle);
 	if (writable) {
@@ -228,6 +246,7 @@ DLLEXPORT double write_string(double handle, const char *str) {
 }
 
 DLLEXPORT double write_buffer_part(double destHandle, double bufferHandle, double ammount) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<ReadWritable> dest = handles.find<ReadWritable> (destHandle);
 	boost::shared_ptr<ReadWritable> source = handles.find<ReadWritable> (bufferHandle);
 
@@ -250,6 +269,7 @@ DLLEXPORT double write_buffer_part(double destHandle, double bufferHandle, doubl
 }
 
 DLLEXPORT double write_buffer(double destHandle, double bufferHandle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<ReadWritable> writable = handles.find<ReadWritable> (
 			destHandle);
 	boost::shared_ptr<Buffer> buffer = handles.find<Buffer> (bufferHandle);
@@ -269,6 +289,7 @@ DLLEXPORT double write_buffer(double destHandle, double bufferHandle) {
 }
 
 DLLEXPORT double tcp_receive(double socketHandle, double size) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<TcpSocket> socket =
 			handles.find<TcpSocket> (socketHandle);
 	if (socket) {
@@ -285,6 +306,7 @@ DLLEXPORT double tcp_receive(double socketHandle, double size) {
 }
 
 DLLEXPORT double tcp_receive_available(double socketHandle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<TcpSocket> socket =
 			handles.find<TcpSocket> (socketHandle);
 	if (socket) {
@@ -295,6 +317,7 @@ DLLEXPORT double tcp_receive_available(double socketHandle) {
 }
 
 DLLEXPORT double tcp_eof(double socketHandle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<TcpSocket> socket =
 			handles.find<TcpSocket> (socketHandle);
 	if (socket) {
@@ -306,6 +329,7 @@ DLLEXPORT double tcp_eof(double socketHandle) {
 
 // TODO rename to tcp_send in 2.0
 DLLEXPORT double socket_send(double socketHandle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<TcpSocket> socket =
 			handles.find<TcpSocket> (socketHandle);
 	if (socket) {
@@ -315,6 +339,7 @@ DLLEXPORT double socket_send(double socketHandle) {
 }
 
 DLLEXPORT double socket_sendbuffer_size(double socketHandle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<Socket> socket = handles.find<Socket> (socketHandle);
 	if (socket) {
 		return socket->getSendbufferSize();
@@ -324,6 +349,7 @@ DLLEXPORT double socket_sendbuffer_size(double socketHandle) {
 }
 
 DLLEXPORT double socket_receivebuffer_size(double socketHandle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<Socket> socket = handles.find<Socket> (socketHandle);
 	if (socket) {
 		return socket->getReceivebufferSize();
@@ -333,6 +359,7 @@ DLLEXPORT double socket_receivebuffer_size(double socketHandle) {
 }
 
 DLLEXPORT double socket_sendbuffer_limit(double socketHandle, double sizeLimit) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<Socket> socket =
 			handles.find<Socket> (socketHandle);
 	if (socket) {
@@ -363,11 +390,13 @@ DLLEXPORT double dllShutdown() {
  */
 
 DLLEXPORT double buffer_create() {
+	MutexLock lock(*apiMutex);
 	BufferPtr newBuffer(new Buffer());
 	return handles.allocate(newBuffer);
 }
 
 DLLEXPORT double buffer_destroy(double handle) {
+	MutexLock lock(*apiMutex);
 	BufferPtr buffer = handles.find<Buffer> (handle);
 	if (buffer) {
 		handles.release(handle);
@@ -376,6 +405,7 @@ DLLEXPORT double buffer_destroy(double handle) {
 }
 
 DLLEXPORT double buffer_clear(double handle) {
+	MutexLock lock(*apiMutex);
 	BufferPtr buffer = handles.find<Buffer> (handle);
 	if (buffer) {
 		buffer->clear();
@@ -384,6 +414,7 @@ DLLEXPORT double buffer_clear(double handle) {
 }
 
 DLLEXPORT double buffer_size(double handle) {
+	MutexLock lock(*apiMutex);
 	BufferPtr buffer = handles.find<Buffer> (handle);
 	if (buffer) {
 		return buffer->size();
@@ -393,6 +424,7 @@ DLLEXPORT double buffer_size(double handle) {
 }
 
 DLLEXPORT double buffer_bytes_left(double handle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<ReadWritable> readWritable = handles.find<ReadWritable> (handle);
 	if (readWritable) {
 		return readWritable->bytesRemaining();
@@ -402,6 +434,7 @@ DLLEXPORT double buffer_bytes_left(double handle) {
 }
 
 DLLEXPORT double buffer_set_readpos(double handle, double newPos) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<ReadWritable> readWritable = handles.find<ReadWritable> (handle);
 	if (readWritable) {
 		readWritable->setReadpos(clipped_cast<size_t> (newPos));
@@ -411,6 +444,7 @@ DLLEXPORT double buffer_set_readpos(double handle, double newPos) {
 
 template<typename DesiredType>
 static double readValue(double handle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<ReadWritable> readWritable = handles.find<ReadWritable> (
 			handle);
 	if (readWritable) {
@@ -453,6 +487,7 @@ DLLEXPORT double read_double(double handle) {
 }
 
 DLLEXPORT const char *read_string(double handle, double len) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<ReadWritable> readWritable = handles.find<ReadWritable> (
 			handle);
 	if (readWritable) {
@@ -465,6 +500,7 @@ DLLEXPORT const char *read_string(double handle, double len) {
 
 // Read the entire file, appending it to the end of the buffer
 DLLEXPORT double append_file_to_buffer(double handle, const char *filename) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<ReadWritable> readWritable = handles.find<ReadWritable> (
 			handle);
 	if (!readWritable) {
@@ -505,6 +541,7 @@ DLLEXPORT double append_file_to_buffer(double handle, const char *filename) {
 
 // Overwrite or create the file provided with the contents of the buffer
 DLLEXPORT double write_buffer_to_file(double handle, const char *filename) {
+	MutexLock lock(*apiMutex);
 	BufferPtr buffer = handles.find<Buffer> (handle);
 	boost::shared_ptr<Socket> socket = handles.find<Socket> (handle);
 
@@ -551,6 +588,7 @@ static boost::shared_ptr<UdpSocket> getUdpSocketOrPrepareDefaultSocket(double ha
 }
 
 DLLEXPORT double udp_send(double handle, const char *host, double port) {
+	MutexLock lock(*apiMutex);
 	uint16_t intPort;
 	try {
 		intPort = numeric_cast<uint16_t> (port);
@@ -570,6 +608,7 @@ DLLEXPORT double udp_send(double handle, const char *host, double port) {
 }
 
 DLLEXPORT double udp_broadcast(double handle, double port) {
+	MutexLock lock(*apiMutex);
 	uint16_t intPort;
 	try {
 		intPort = numeric_cast<uint16_t> (port);
@@ -589,6 +628,7 @@ DLLEXPORT double udp_broadcast(double handle, double port) {
 }
 
 DLLEXPORT double udp_receive(double handle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<UdpSocket> sock = handles.find<UdpSocket>(handle);
 	if(sock) {
 		return sock->receive();
@@ -601,15 +641,18 @@ DLLEXPORT double udp_receive(double handle) {
  */
 
 DLLEXPORT double debug_handles() {
+	MutexLock lock(*apiMutex);
 	return handles.size();
 }
 
 DLLEXPORT double set_little_endian_global(double littleEndian) {
+	MutexLock lock(*apiMutex);
 	ReadWritable::setLittleEndianDefault(littleEndian);
 	return 0;
 }
 
 DLLEXPORT double set_little_endian(double handle, double littleEndian) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<ReadWritable> writable = handles.find<ReadWritable> (
 			handle);
 	if (writable) {
@@ -619,6 +662,7 @@ DLLEXPORT double set_little_endian(double handle, double littleEndian) {
 }
 
 DLLEXPORT const char* socket_remote_ip(double handle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<Socket> socket = handles.find<Socket> (handle);
 	if (socket) {
 		return replaceStringReturnBuffer(socket->getRemoteIp());
@@ -627,6 +671,7 @@ DLLEXPORT const char* socket_remote_ip(double handle) {
 }
 
 DLLEXPORT double socket_local_port(double handle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<Socket> socket = handles.find<Socket> (handle);
 	if (socket) {
 		return socket->getLocalPort();
@@ -641,6 +686,7 @@ DLLEXPORT double socket_local_port(double handle) {
 }
 
 DLLEXPORT double socket_remote_port(double handle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<Socket> socket = handles.find<Socket> (handle);
 	if (socket) {
 		return socket->getRemotePort();
@@ -649,18 +695,22 @@ DLLEXPORT double socket_remote_port(double handle) {
 }
 
 DLLEXPORT double ip_lookup_create(const char *host) {
+	MutexLock lock(*apiMutex);
 	return handles.allocate(IpLookup::lookup(host));
 }
 
 DLLEXPORT double ipv4_lookup_create(const char *host) {
+	MutexLock lock(*apiMutex);
 	return handles.allocate(IpLookup::lookup(host, boost::asio::ip::tcp::v4()));
 }
 
 DLLEXPORT double ipv6_lookup_create(const char *host) {
+	MutexLock lock(*apiMutex);
 	return handles.allocate(IpLookup::lookup(host, boost::asio::ip::tcp::v6()));
 }
 
 DLLEXPORT double ip_lookup_ready(double lookupHandle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<IpLookup> lookup = handles.find<IpLookup>(lookupHandle);
 	if(lookup) {
 		return lookup->ready();
@@ -674,6 +724,7 @@ DLLEXPORT double ip_lookup_ready(double lookupHandle) {
 }
 
 DLLEXPORT double ip_lookup_has_next(double lookupHandle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<IpLookup> lookup = handles.find<IpLookup>(lookupHandle);
 	if(lookup) {
 		return lookup->hasNext();
@@ -682,6 +733,7 @@ DLLEXPORT double ip_lookup_has_next(double lookupHandle) {
 }
 
 DLLEXPORT const char *ip_lookup_next_result(double lookupHandle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<IpLookup> lookup = handles.find<IpLookup>(lookupHandle);
 	if(lookup) {
 		return replaceStringReturnBuffer(lookup->nextResult());
@@ -690,6 +742,7 @@ DLLEXPORT const char *ip_lookup_next_result(double lookupHandle) {
 }
 
 DLLEXPORT double ip_lookup_destroy(double lookupHandle) {
+	MutexLock lock(*apiMutex);
 	boost::shared_ptr<IpLookup> lookup = handles.find<IpLookup>(lookupHandle);
 	if(lookup) {
 		handles.release(lookupHandle);
@@ -698,6 +751,7 @@ DLLEXPORT double ip_lookup_destroy(double lookupHandle) {
 }
 
 DLLEXPORT double ip_is_v4(const char *ip) {
+	MutexLock lock(*apiMutex);
 	boost::system::error_code ec;
 	boost::asio::ip::address_v4::from_string(ip, ec);
 
@@ -709,6 +763,7 @@ DLLEXPORT double ip_is_v4(const char *ip) {
 }
 
 DLLEXPORT double ip_is_v6(const char *ip) {
+	MutexLock lock(*apiMutex);
 	boost::system::error_code ec;
 	boost::asio::ip::address_v6::from_string(ip, ec);
 
@@ -720,7 +775,7 @@ DLLEXPORT double ip_is_v6(const char *ip) {
 }
 
 /**
- * Some bit manipulation functions
+ * Some bit manipulation functions. They are pure functions, so no locking is required.
  */
 DLLEXPORT double bit_get(double source, double bitnum) {
 	int8_t intbitnum = clipped_cast<int8_t>(bitnum);
