@@ -288,6 +288,46 @@ DLLEXPORT double write_buffer(double destHandle, double bufferHandle) {
 	return 0;
 }
 
+static inline bool isValidHex(const char c)
+{
+	return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F');
+}
+
+static inline uint8_t getHexValue(const char c)
+{
+	return ('0' <= c && c <= '9') ? (c - '0') :
+	       ('a' <= c && c <= 'f') ? (c - 'a' + 10) :
+	       ('A' <= c && c <= 'F') ? (c - 'A' + 10) :
+	                                0;
+}
+
+DLLEXPORT double write_hex(double handle, const char *hexStr) {
+	MutexLock lock(*apiMutex);
+	boost::shared_ptr<ReadWritable> writable = handles.find<ReadWritable> (
+			handle);
+
+	if (!writable)
+		return -1;
+
+	size_t size = 0;
+	for(const char *pStr = hexStr; *pStr != 0; pStr++) {
+		size++;
+		if(!isValidHex(*pStr))
+			return -2;
+	}
+
+	if(size & 1) // odd number of characters
+		return -3;
+
+	for(const char *pStr = hexStr; *pStr != 0; pStr+=2) {
+		char c1 = *pStr;
+		char c2 = *(pStr+1);
+		uint8_t byte = (getHexValue(c1) << 4) | getHexValue(c2);
+		writable->write(&byte, 1);
+	}
+	return 1;
+}
+
 DLLEXPORT double tcp_receive(double socketHandle, double size) {
 	MutexLock lock(*apiMutex);
 	boost::shared_ptr<TcpSocket> socket =
@@ -493,6 +533,33 @@ DLLEXPORT const char *read_string(double handle, double len) {
 	if (readWritable) {
 		std::string str = readWritable->readString(clipped_cast<size_t> (len));
 		return replaceStringReturnBuffer(str);
+	} else {
+		return "";
+	}
+}
+
+static inline char getHexDigit(uint8_t nibble)
+{
+	return (nibble <= 9)
+			? ('0' + nibble)
+			: ('a' + nibble - 10);
+}
+
+DLLEXPORT const char *read_hex(double handle, double len) {
+	MutexLock lock(*apiMutex);
+	boost::shared_ptr<ReadWritable> readWritable = handles.find<ReadWritable> (
+				handle);
+
+	if (readWritable) {
+		std::string str = readWritable->readString(clipped_cast<size_t> (len));
+		std::string result;
+		result.reserve(str.length()*2);
+		for(char c : str) {
+			uint8_t uc = (uint8_t)c;
+			result.push_back(getHexDigit((uc & 0xf0) >> 4));
+			result.push_back(getHexDigit(uc & 0x0f));
+		}
+		return replaceStringReturnBuffer(result);
 	} else {
 		return "";
 	}

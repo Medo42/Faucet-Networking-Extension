@@ -67,5 +67,24 @@ assertEquals("Hallo", read_string(buffer1, 5));
 assertEquals(6, buffer_bytes_left(buffer1));
 assertEquals(" Welt", read_string(buffer1, 5));
 assertEquals(1, buffer_bytes_left(buffer1));
+read_string(buffer1, 1);
+
+write_hex(buffer1, "466175636574");
+assertEquals(6, buffer_bytes_left(buffer1));
+assertEquals("Faucet", read_string(buffer1, 6));
+
+write_string(buffer1, "Net");
+assertEquals("4e6574", read_hex(buffer1, 3));
+
+write_hex(buffer1, "0123456789abcdefABCDEF1011121314");
+assertEquals(16, buffer_bytes_left(buffer1));
+assertEquals("0123456789abcdefabcdef1011121314", read_hex(buffer1, 16));
+
+write_hex(buffer1, "");
+assertEquals(0, buffer_bytes_left(buffer1));
+
+write_hex(buffer1, "012345678");
+write_hex(buffer1, "01234S6789");
+assertEquals(0, buffer_bytes_left(buffer1));
 
 buffer_destroy(buffer1);
