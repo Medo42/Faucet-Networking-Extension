@@ -1,20 +1,20 @@
 #include "IpLookup.hpp"
 
-#include <boost/make_shared.hpp>
 #include <boost/thread/locks.hpp>
 #include <boost/bind.hpp>
+#include <memory>
 
 using namespace boost::asio::ip;
-boost::shared_ptr<IpLookup> IpLookup::lookup(const char *lookup) {
-	boost::shared_ptr<IpLookup> ipLookup(new IpLookup());
+std::shared_ptr<IpLookup> IpLookup::lookup(const char *lookup) {
+	std::shared_ptr<IpLookup> ipLookup (new IpLookup());
 	tcp::resolver::query query(lookup, "", tcp::resolver::query::address_configured);
 	ipLookup->resolver_.async_resolve(query, boost::bind(&IpLookup::handleResolve,
 			ipLookup, boost::asio::placeholders::error, boost::asio::placeholders::iterator));
 	return ipLookup;
 }
 
-boost::shared_ptr<IpLookup> IpLookup::lookup(const char *lookup, const tcp::resolver::protocol_type &protocol) {
-	boost::shared_ptr<IpLookup> ipLookup(new IpLookup());
+std::shared_ptr<IpLookup> IpLookup::lookup(const char *lookup, const tcp::resolver::protocol_type &protocol) {
+	std::shared_ptr<IpLookup> ipLookup (new IpLookup());
 	tcp::resolver::query query(protocol, lookup, "", tcp::resolver::query::address_configured);
 	ipLookup->resolver_.async_resolve(query, boost::bind(&IpLookup::handleResolve,
 			ipLookup, boost::asio::placeholders::error, boost::asio::placeholders::iterator));

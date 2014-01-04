@@ -4,20 +4,19 @@
 #include <faucet/Fallible.hpp>
 
 #include <boost/integer.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/enable_shared_from_this.hpp>
 #include <boost/thread.hpp>
 #include <string>
+#include <memory>
 
 class TcpSocket;
 
 using namespace boost::asio::ip;
-using boost::shared_ptr;
+
 // TODO: Seperate error reporting for ipv4 and ipv6
-class TcpAcceptor : public boost::enable_shared_from_this<TcpAcceptor> {
+class TcpAcceptor : public std::enable_shared_from_this<TcpAcceptor> {
 public:
-	static shared_ptr<TcpAcceptor> listen(boost::shared_ptr<tcp::acceptor> acceptor);
-	static shared_ptr<TcpAcceptor> error(std::string message);
+	static std::shared_ptr<TcpAcceptor> listen(std::shared_ptr<tcp::acceptor> acceptor);
+	static std::shared_ptr<TcpAcceptor> error(std::string message);
 
 	virtual ~TcpAcceptor();
 
@@ -28,7 +27,7 @@ public:
 	 * If a connection is waiting to be accepted, a socket to this
 	 * connection is returned. Otherwise a NULL pointer is returned.
 	 */
-	shared_ptr<TcpSocket> accept();
+	std::shared_ptr<TcpSocket> accept();
 
 	/**
 	 * Stop listening for connections. Call this to ensure the
@@ -40,8 +39,8 @@ public:
 private:
 	TcpAcceptor();
 
-	shared_ptr<tcp::acceptor> acceptor_;
-	shared_ptr<tcp::socket> socket_;
+	std::shared_ptr<tcp::socket> socket_;
+	std::shared_ptr<tcp::acceptor> acceptor_;
 
 	bool hasError_;
 	std::string errorMessage_;
@@ -50,5 +49,5 @@ private:
 	boost::recursive_mutex errorMutex_;
 
 	void startAsyncAccept();
-	void handleAccept(const boost::system::error_code &error, shared_ptr<tcp::socket> socket);
+	void handleAccept(const boost::system::error_code &error, std::shared_ptr<tcp::socket> socket);
 };

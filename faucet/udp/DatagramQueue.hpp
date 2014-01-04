@@ -2,18 +2,18 @@
 
 #include <faucet/Buffer.hpp>
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 #include <string>
 #include <deque>
 
 struct QueueItem {
-	QueueItem(boost::shared_ptr<Buffer> buffer,
+	QueueItem(std::shared_ptr<Buffer> buffer,
 			std::string hostname, uint16_t port) :
 			memSize(sizeof(QueueItem)+buffer->size()), buffer(buffer), remoteHost(hostname), remotePort(port) {
 	}
 
 	const size_t memSize;
-	boost::shared_ptr<Buffer> buffer;
+	std::shared_ptr<Buffer> buffer;
 	std::string remoteHost;
 	uint16_t remotePort;
 };

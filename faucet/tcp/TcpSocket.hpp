@@ -10,15 +10,14 @@
 #include <faucet/tcp/connectionStates/TcpConnected.hpp>
 #include <faucet/tcp/connectionStates/TcpClosed.hpp>
 
-#include <boost/enable_shared_from_this.hpp>
 #include <boost/integer.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include <boost/utility.hpp>
 #include <string>
+#include <memory>
 
 class TcpSocket: public Socket,
-		public boost::enable_shared_from_this<TcpSocket>,
+		public std::enable_shared_from_this<TcpSocket>,
 		boost::noncopyable {
 	friend class ConnectionState;
 
@@ -71,18 +70,18 @@ public:
 	 * Create a new socket representing a connection to the
 	 * given host and port.
 	 */
-	static boost::shared_ptr<TcpSocket> connectTo(const char *host,
+	static std::shared_ptr<TcpSocket> connectTo(const char *host,
 			uint16_t port);
 
 	/**
 	 * Create an error socket with the given parameter as error message
 	 */
-	static boost::shared_ptr<TcpSocket> error(const std::string &message);
+	static std::shared_ptr<TcpSocket> error(const std::string &message);
 
 	/**
 	 * Create a connected TcpSocket from an existing connected tcp::socket
 	 */
-	static boost::shared_ptr<TcpSocket> fromConnectedSocket(boost::shared_ptr<
+	static std::shared_ptr<TcpSocket> fromConnectedSocket(std::shared_ptr<
 			boost::asio::ip::tcp::socket> connectedSocket);
 
 private:
@@ -98,7 +97,7 @@ private:
 	 * from completion handlers. For all access to them the common mutex
 	 * must be locked first.
 	 */
-	boost::shared_ptr<boost::asio::ip::tcp::socket> socket_;
+	std::shared_ptr<boost::asio::ip::tcp::socket> socket_;
 	TcpConnecting tcpConnecting_;
 	TcpConnected tcpConnected_;
 	TcpClosed tcpClosed_;
@@ -116,7 +115,7 @@ private:
 	Buffer receiveBuffer_;
 	size_t sendbufferSizeLimit_;
 
-	TcpSocket(boost::shared_ptr<boost::asio::ip::tcp::socket> socket);
+	TcpSocket(std::shared_ptr<boost::asio::ip::tcp::socket> socket);
 
 	void enterConnectingState(const char *host, uint16_t port);
 	void enterConnectedState();

@@ -9,17 +9,14 @@
 #include <faucet/V4FirstIterator.hpp>
 
 #include <boost/integer.hpp>
-#include <boost/shared_ptr.hpp>
-#include <boost/shared_array.hpp>
-#include <boost/make_shared.hpp>
-#include <boost/enable_shared_from_this.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include <boost/utility.hpp>
 #include <string>
+#include <memory>
 
 // TODO: Seperate error reporting for ipv4 and ipv6
 class UdpSocket: public Socket,
-		public boost::enable_shared_from_this<UdpSocket>,
+		public std::enable_shared_from_this<UdpSocket>,
 		boost::noncopyable {
 
 public:
@@ -51,20 +48,20 @@ public:
 
 	void close();
 
-	static boost::shared_ptr<UdpSocket> error(const std::string &message);
-	static boost::shared_ptr<UdpSocket> bind(uint16_t port);
+	static std::shared_ptr<UdpSocket> error(const std::string &message);
+	static std::shared_ptr<UdpSocket> bind(uint16_t port);
 
 private:
 	UdpSocket();
 	void asyncSend();
-	void handleSend(const boost::system::error_code &err, boost::shared_ptr<Buffer> sendBuffer, V4FirstIterator<boost::asio::ip::udp> endpoints);
-	void asyncReceive(boost::asio::ip::udp::socket *sock, boost::shared_array<uint8_t> recvbuffer);
-	static void handleReceive(boost::weak_ptr<UdpSocket> ptr, const boost::system::error_code &err,
-			size_t bytesTransferred, boost::shared_ptr<boost::asio::ip::udp::endpoint> endpoint,
-			boost::asio::ip::udp::socket *sock, boost::shared_array<uint8_t> recvbuffer);
+	void handleSend(const boost::system::error_code &err, std::shared_ptr<Buffer> sendBuffer, V4FirstIterator<boost::asio::ip::udp> endpoints);
+	void asyncReceive(boost::asio::ip::udp::socket *sock, std::shared_ptr<std::array<uint8_t, 65536>> recvbuffer);
+	static void handleReceive(std::weak_ptr<UdpSocket> ptr, const boost::system::error_code &err,
+			size_t bytesTransferred, std::shared_ptr<boost::asio::ip::udp::endpoint> endpoint,
+			boost::asio::ip::udp::socket *sock, std::shared_ptr<std::array<uint8_t, 65536>> recvbuffer);
 	void handleResolve(const boost::system::error_code &error,
 			boost::asio::ip::udp::resolver::iterator endpointIterator,
-			boost::shared_ptr<Buffer> buffer);
+			std::shared_ptr<Buffer> buffer);
 	boost::asio::ip::udp::socket *getAppropriateSocket(
 			const boost::asio::ip::udp::endpoint &endpoint);
 
@@ -86,6 +83,6 @@ private:
 	std::string remoteIp_;
 	uint16_t remotePort_;
 
-	boost::shared_ptr<Buffer> receiveBuffer_;
-	boost::shared_ptr<Buffer> sendBuffer_;
+	std::shared_ptr<Buffer> receiveBuffer_;
+	std::shared_ptr<Buffer> sendBuffer_;
 };

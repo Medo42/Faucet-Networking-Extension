@@ -4,23 +4,23 @@
 #include <boost/bind.hpp>
 
 TcpAcceptor::TcpAcceptor() :
+        socket_(),
 		acceptor_(),
-		socket_(),
 		hasError_(false),
 		errorMessage_(),
 		socketMutex_(),
 		errorMutex_() {
 }
 
-shared_ptr<TcpAcceptor> TcpAcceptor::listen(boost::shared_ptr<tcp::acceptor> acceptor) {
-	shared_ptr<TcpAcceptor> result(new TcpAcceptor());
+std::shared_ptr<TcpAcceptor> TcpAcceptor::listen(std::shared_ptr<tcp::acceptor> acceptor) {
+    std::shared_ptr<TcpAcceptor> result(new TcpAcceptor());
 	result->acceptor_ = acceptor;
 	result->startAsyncAccept();
 	return result;
 }
 
-shared_ptr<TcpAcceptor> TcpAcceptor::error(std::string message) {
-	shared_ptr<TcpAcceptor> result(new TcpAcceptor());
+std::shared_ptr<TcpAcceptor> TcpAcceptor::error(std::string message) {
+	std::shared_ptr<TcpAcceptor> result(new TcpAcceptor());
 	result->hasError_ = true;
 	result->errorMessage_ = message;
 	return result;
@@ -38,16 +38,16 @@ bool TcpAcceptor::hasError() {
 	return hasError_;
 }
 
-shared_ptr<TcpSocket> TcpAcceptor::accept() {
+std::shared_ptr<TcpSocket> TcpAcceptor::accept() {
 	boost::lock_guard<boost::recursive_mutex> guard(socketMutex_);
 	if(socket_) {
 		// Ownership of the socket transfers to the TcpSocket
-		shared_ptr<TcpSocket> tcpSocket = TcpSocket::fromConnectedSocket(socket_);
+		auto tcpSocket = TcpSocket::fromConnectedSocket(socket_);
 		socket_.reset();
 		startAsyncAccept();
 		return tcpSocket;
 	} else {
-		return boost::shared_ptr<TcpSocket>();
+		return nullptr;
 	}
 }
 
@@ -60,7 +60,7 @@ void TcpAcceptor::close() {
 }
 
 void TcpAcceptor::startAsyncAccept() {
-	shared_ptr<tcp::socket> socket(new tcp::socket(Asio::getIoService()));
+	auto socket = std::make_shared<tcp::socket>(Asio::getIoService());
 	acceptor_->async_accept(*socket, boost::bind(
 			&TcpAcceptor::handleAccept,
 			shared_from_this(),
@@ -68,7 +68,7 @@ void TcpAcceptor::startAsyncAccept() {
 			socket));
 }
 
-void TcpAcceptor::handleAccept(const boost::system::error_code &error, shared_ptr<tcp::socket> socket) {
+void TcpAcceptor::handleAccept(const boost::system::error_code &error, std::shared_ptr<tcp::socket> socket) {
 	boost::lock_guard<boost::recursive_mutex> guard(socketMutex_);
 	if(!error) {
 		socket_ = socket;

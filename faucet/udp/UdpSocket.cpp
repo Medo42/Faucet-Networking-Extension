@@ -43,8 +43,8 @@ UdpSocket::~UdpSocket() {
  * As a consequence, this operation is not reliable on WinXP, since the IPv6 part may fail
  * even though there might be free ports available.
  */
-boost::shared_ptr<UdpSocket> UdpSocket::bind(uint16_t portnr) {
-	boost::shared_ptr<UdpSocket> socketPtr(new UdpSocket());
+std::shared_ptr<UdpSocket> UdpSocket::bind(uint16_t portnr) {
+	std::shared_ptr<UdpSocket> socketPtr(new UdpSocket());
 	boost::system::error_code ignoredError, v4Error, v6Error;
 
 	if (portnr == 0) {
@@ -93,19 +93,19 @@ boost::shared_ptr<UdpSocket> UdpSocket::bind(uint16_t portnr) {
 	} else {
 		socketPtr->localPort_ = portnr;
 		if (socketPtr->ipv4socket_.is_open()) {
-			boost::shared_array<uint8_t> buf(new uint8_t[65536]);
+            auto buf = std::make_shared<std::array<uint8_t, 65536>>();
 			socketPtr->asyncReceive(&(socketPtr->ipv4socket_), buf);
 		}
 		if (socketPtr->ipv6socket_.is_open()) {
-			boost::shared_array<uint8_t> buf(new uint8_t[65536]);
+		    auto buf = std::make_shared<std::array<uint8_t, 65536>>();
 			socketPtr->asyncReceive(&(socketPtr->ipv6socket_), buf);
 		}
 	}
 	return socketPtr;
 }
 
-boost::shared_ptr<UdpSocket> UdpSocket::error(const std::string &message) {
-	boost::shared_ptr<UdpSocket> socketPtr(new UdpSocket());
+std::shared_ptr<UdpSocket> UdpSocket::error(const std::string &message) {
+	std::shared_ptr<UdpSocket> socketPtr(new UdpSocket());
 	socketPtr->hasError_ = true;
 	socketPtr->errorMessage_ = message;
 	return socketPtr;
@@ -197,7 +197,7 @@ bool UdpSocket::broadcast(uint16_t port) {
 
 void UdpSocket::handleResolve(const boost::system::error_code &error,
 		udp::resolver::iterator endpointIterator,
-		boost::shared_ptr<Buffer> buffer) {
+		std::shared_ptr<Buffer> buffer) {
 	handleSend(error ? error : boost::asio::error::host_not_found, buffer, V4FirstIterator<udp>(endpointIterator));
 }
 
@@ -263,7 +263,7 @@ udp::socket *UdpSocket::getAppropriateSocket(const udp::endpoint &endpoint) {
 	}
 }
 
-void UdpSocket::handleSend(const boost::system::error_code &err, boost::shared_ptr<Buffer> buffer, V4FirstIterator<udp> endpoints) {
+void UdpSocket::handleSend(const boost::system::error_code &err, std::shared_ptr<Buffer> buffer, V4FirstIterator<udp> endpoints) {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
 
 	if(err && endpoints.hasNext()) {
@@ -291,24 +291,24 @@ void UdpSocket::handleSend(const boost::system::error_code &err, boost::shared_p
 }
 
 void UdpSocket::asyncReceive(boost::asio::ip::udp::socket *sock,
-		boost::shared_array<uint8_t> recvbuffer) {
+		std::shared_ptr<std::array<uint8_t, 65536>> recvbuffer) {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
-	boost::shared_ptr<udp::endpoint> endpoint = boost::make_shared<udp::endpoint>();
+	auto endpoint = std::make_shared<udp::endpoint>();
 	sock->async_receive_from(
-			boost::asio::mutable_buffers_1(recvbuffer.get(), 65536),
+			boost::asio::mutable_buffers_1(recvbuffer->data(), recvbuffer->size()),
 			*endpoint,
-			boost::bind(&UdpSocket::handleReceive, boost::weak_ptr<UdpSocket>(shared_from_this()),
+			boost::bind(&UdpSocket::handleReceive, std::weak_ptr<UdpSocket>(shared_from_this()),
 					boost::asio::placeholders::error,
 					boost::asio::placeholders::bytes_transferred, endpoint,
 					sock, recvbuffer));
 }
 
-void UdpSocket::handleReceive(boost::weak_ptr<UdpSocket> ptr, const boost::system::error_code &err,
+void UdpSocket::handleReceive(std::weak_ptr<UdpSocket> ptr, const boost::system::error_code &err,
 		size_t bytesTransferred,
-		boost::shared_ptr<boost::asio::ip::udp::endpoint> endpoint,
+		std::shared_ptr<boost::asio::ip::udp::endpoint> endpoint,
 		boost::asio::ip::udp::socket *sock,
-		boost::shared_array<uint8_t> recvbuffer) {
-	boost::shared_ptr<UdpSocket> sockPtr = ptr.lock();
+		std::shared_ptr<std::array<uint8_t, 65536>> recvbuffer) {
+	std::shared_ptr<UdpSocket> sockPtr = ptr.lock();
 	if(!sockPtr) {
 		// The UdpSocket has been destroyed or has errored out, no need to keep receiving
 		return;
@@ -316,8 +316,8 @@ void UdpSocket::handleReceive(boost::weak_ptr<UdpSocket> ptr, const boost::syste
 
 	boost::lock_guard<boost::recursive_mutex> guard(sockPtr->commonMutex_);
 	if (!err) {
-		boost::shared_ptr<Buffer> buffer = boost::make_shared<Buffer>();
-		buffer->write(recvbuffer.get(), bytesTransferred);
+		auto buffer = std::make_shared<Buffer>();
+		buffer->write(recvbuffer->data(), bytesTransferred);
 		boost::system::error_code ec;
 		sockPtr->receivequeue_.push(QueueItem(buffer, endpoint->address().to_string(ec), endpoint->port()));
 	}

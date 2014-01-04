@@ -4,9 +4,8 @@
 #include <faucet/V4FirstIterator.hpp>
 #include "ConnectionState.hpp"
 
-#include <boost/shared_ptr.hpp>
-
 #include <string>
+#include <memory>
 
 class TcpConnecting: public ConnectionState {
 public:
@@ -29,14 +28,14 @@ private:
 	bool abortRequested;
 
 	typedef boost::asio::ip::tcp::resolver::protocol_type protocol_type;
-	void handleResolve(boost::shared_ptr<TcpSocket> tcpSocket,
+	void handleResolve(std::shared_ptr<TcpSocket> tcpSocket,
 			const boost::system::error_code &err,
 			boost::asio::ip::tcp::resolver::iterator endpointIterator);
 
-	boost::system::error_code startConnectionAttempt(boost::shared_ptr<TcpSocket> tcpSocket,
+	boost::system::error_code startConnectionAttempt(std::shared_ptr<TcpSocket> tcpSocket,
 			V4FirstIterator<boost::asio::ip::tcp> endpoints, boost::system::error_code &ec);
 
-	void handleConnect(boost::shared_ptr<TcpSocket> tcpSocket,
+	void handleConnect(std::shared_ptr<TcpSocket> tcpSocket,
 			const boost::system::error_code &err,
 			V4FirstIterator<boost::asio::ip::tcp> endpoints);
 };

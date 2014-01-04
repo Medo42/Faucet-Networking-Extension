@@ -26,7 +26,7 @@ void TcpConnecting::abort() {
 	abortRequested = true;
 }
 
-void TcpConnecting::handleResolve(boost::shared_ptr<TcpSocket> socket,
+void TcpConnecting::handleResolve(std::shared_ptr<TcpSocket> socket,
 		const boost::system::error_code &error,
 		tcp::resolver::iterator endpointIterator) {
 	boost::lock_guard<boost::recursive_mutex> guard(getCommonMutex());
@@ -48,7 +48,7 @@ void TcpConnecting::handleResolve(boost::shared_ptr<TcpSocket> socket,
 	}
 }
 
-boost::system::error_code TcpConnecting::startConnectionAttempt(boost::shared_ptr<TcpSocket> socket,
+boost::system::error_code TcpConnecting::startConnectionAttempt(std::shared_ptr<TcpSocket> socket,
 		V4FirstIterator<tcp> endpoints, boost::system::error_code &ec) {
 	if (getSocket().close(ec)) {
 		return ec;
@@ -60,7 +60,7 @@ boost::system::error_code TcpConnecting::startConnectionAttempt(boost::shared_pt
 	return ec;
 }
 
-void TcpConnecting::handleConnect(boost::shared_ptr<TcpSocket> socket,
+void TcpConnecting::handleConnect(std::shared_ptr<TcpSocket> socket,
 		const boost::system::error_code &error,
 		V4FirstIterator<tcp> endpoints) {
 	boost::lock_guard<boost::recursive_mutex> guard(getCommonMutex());

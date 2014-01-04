@@ -9,8 +9,8 @@ CombinedTcpAcceptor::CombinedTcpAcceptor(uint16_t port) :
 		checkV6First_(false),
 		localPort_(port) {
 
-	boost::shared_ptr<tcp::acceptor> v4acceptor(new tcp::acceptor(Asio::getIoService()));
-	boost::shared_ptr<tcp::acceptor> v6acceptor(new tcp::acceptor(Asio::getIoService()));
+	auto v4acceptor = std::make_shared<tcp::acceptor>(Asio::getIoService());
+	auto v6acceptor = std::make_shared<tcp::acceptor>(Asio::getIoService());
 	boost::system::error_code ignoredError, v4Error, v6Error;
 
 	if (localPort_ == 0) {
@@ -79,8 +79,8 @@ bool CombinedTcpAcceptor::hasError() {
 	return v4Acceptor_->hasError() && v6Acceptor_->hasError();
 }
 
-boost::shared_ptr<TcpSocket> CombinedTcpAcceptor::accept() {
-	boost::shared_ptr<TcpSocket> acceptedSocket;
+std::shared_ptr<TcpSocket> CombinedTcpAcceptor::accept() {
+	std::shared_ptr<TcpSocket> acceptedSocket;
 	if(checkV6First_) {
 		acceptedSocket = v6Acceptor_->accept();
 		if(!acceptedSocket) {

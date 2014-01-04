@@ -118,37 +118,35 @@ uint16_t TcpSocket::getLocalPort() {
 	return localPort_;
 }
 
-boost::shared_ptr<TcpSocket> TcpSocket::connectTo(const char *host,
+std::shared_ptr<TcpSocket> TcpSocket::connectTo(const char *host,
 		uint16_t port) {
-	boost::shared_ptr<tcp::socket> asioSocket(
-			new tcp::socket(Asio::getIoService()));
-	boost::shared_ptr<TcpSocket> result(new TcpSocket(asioSocket));
+    auto asioSocket = std::make_shared<tcp::socket>(Asio::getIoService());
+	std::shared_ptr<TcpSocket> result(new TcpSocket(asioSocket));
 	boost::lock_guard<boost::recursive_mutex> guard(result->commonMutex_);
 	result->state_ = &(result->tcpConnecting_);
 	result->tcpConnecting_.enter(host, port);
 	return result;
 }
 
-boost::shared_ptr<TcpSocket> TcpSocket::error(const std::string &message) {
-	boost::shared_ptr<tcp::socket> asioSocket(
-			new tcp::socket(Asio::getIoService()));
-	boost::shared_ptr<TcpSocket> result(new TcpSocket(asioSocket));
+std::shared_ptr<TcpSocket> TcpSocket::error(const std::string &message) {
+    auto asioSocket = std::make_shared<tcp::socket>(Asio::getIoService());
+    std::shared_ptr<TcpSocket> result(new TcpSocket(asioSocket));
 	boost::lock_guard<boost::recursive_mutex> guard(result->commonMutex_);
 	result->state_ = &(result->tcpClosed_);
 	result->tcpClosed_.enterError(message);
 	return result;
 }
 
-boost::shared_ptr<TcpSocket> TcpSocket::fromConnectedSocket(
-		boost::shared_ptr<tcp::socket> connectedSocket) {
-	boost::shared_ptr<TcpSocket> result(new TcpSocket(connectedSocket));
+std::shared_ptr<TcpSocket> TcpSocket::fromConnectedSocket(
+		std::shared_ptr<tcp::socket> connectedSocket) {
+	std::shared_ptr<TcpSocket> result(new TcpSocket(connectedSocket));
 	boost::lock_guard<boost::recursive_mutex> guard(result->commonMutex_);
 	result->state_ = &(result->tcpConnected_);
 	result->tcpConnected_.enter();
 	return result;
 }
 
-TcpSocket::TcpSocket(boost::shared_ptr<tcp::socket> socket) :
+TcpSocket::TcpSocket(std::shared_ptr<tcp::socket> socket) :
 		commonMutex_(), socket_(socket), tcpConnecting_(*this), tcpConnected_(
 				*this), tcpClosed_(*this), state_(0), sendbuffer_(), remoteIp_(), remotePort_(
 				0), localPort_(0), receiveBuffer_(), sendbufferSizeLimit_(

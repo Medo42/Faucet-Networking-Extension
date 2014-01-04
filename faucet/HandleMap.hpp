@@ -4,7 +4,6 @@
 
 #include <map>
 #include <boost/integer.hpp>
-#include <boost/shared_ptr.hpp>
 #include <boost/cast.hpp>
 
 using boost::numeric_cast;
@@ -19,7 +18,7 @@ using boost::numeric::bad_numeric_cast;
  * true in Game Maker.
  */
 class HandleMap {
-	typedef boost::shared_ptr<Handled> HandledPtr;
+	typedef std::shared_ptr<Handled> HandledPtr;
 public:
 	HandleMap() : nextHandle_(1), content_() {}
 
@@ -43,12 +42,12 @@ public:
 	 * previously been associated with NULL.
 	 */
 	template<typename RequestedType>
-	boost::shared_ptr<RequestedType> find(uint32_t handle) {
-		std::map<uint32_t, HandledPtr>::iterator iter = content_.find(handle);
+	std::shared_ptr<RequestedType> find(uint32_t handle) {
+		auto iter = content_.find(handle);
 		if(iter == content_.end()) {
-			return boost::shared_ptr<RequestedType>();
+			return nullptr;
 		} else {
-			return boost::dynamic_pointer_cast<RequestedType>(iter->second);
+			return std::dynamic_pointer_cast<RequestedType>(iter->second);
 		}
 	}
 
@@ -57,14 +56,14 @@ public:
 	 * Returns a NULL pointer if the double value cannot be represented as uint32_t.
 	 */
 	template<typename RequestedType>
-	boost::shared_ptr<RequestedType> find(double handle) {
+	std::shared_ptr<RequestedType> find(double handle) {
 		if(trunc(handle) != handle) {
-			return boost::shared_ptr<RequestedType>();
+			return std::shared_ptr<RequestedType>();
 		}
 		try {
 			return find<RequestedType>(numeric_cast<uint32_t>(handle));
 		} catch(bad_numeric_cast &e) {
-			return boost::shared_ptr<RequestedType>();
+			return nullptr;
 		}
 	}
 

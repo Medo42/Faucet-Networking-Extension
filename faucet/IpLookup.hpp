@@ -3,16 +3,16 @@
 #include "Handled.hpp"
 #include <faucet/Asio.hpp>
 
-#include <boost/shared_ptr.hpp>
 #include <boost/utility.hpp>
 #include <boost/thread/recursive_mutex.hpp>
 #include <string>
+#include <memory>
 
 class IpLookup: public Handled,
 		boost::noncopyable {
 public:
-	static boost::shared_ptr<IpLookup> lookup(const char *lookup);
-	static boost::shared_ptr<IpLookup> lookup(const char *lookup, const boost::asio::ip::tcp::resolver::protocol_type &protocol);
+	static std::shared_ptr<IpLookup> lookup(const char *lookup);
+	static std::shared_ptr<IpLookup> lookup(const char *lookup, const boost::asio::ip::tcp::resolver::protocol_type &protocol);
 
 	bool ready();
 	bool hasNext();

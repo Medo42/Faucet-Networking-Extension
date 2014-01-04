@@ -2,7 +2,7 @@
 
 #include "ConnectionState.hpp"
 
-#include <boost/shared_ptr.hpp>
+#include <memory>
 
 class TcpConnected: public ConnectionState {
 public:
@@ -30,10 +30,10 @@ private:
 
 	void nonblockReceive(size_t maxData);
 
-	void handleSend(boost::shared_ptr<TcpSocket> socket,
+	void handleSend(std::shared_ptr<TcpSocket> socket,
 			const boost::system::error_code &err, size_t bytesTransferred);
 
 	void startAsyncReceive(size_t ammount);
-	void handleReceive(boost::shared_ptr<TcpSocket> socket,
+	void handleReceive(std::shared_ptr<TcpSocket> socket,
 			const boost::system::error_code &error);
 };

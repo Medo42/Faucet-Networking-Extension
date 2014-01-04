@@ -45,7 +45,7 @@ void TcpConnected::startAsyncSend() {
 	}
 }
 
-void TcpConnected::handleSend(boost::shared_ptr<TcpSocket> socket,
+void TcpConnected::handleSend(std::shared_ptr<TcpSocket> socket,
 		const boost::system::error_code &error, size_t bytesTransferred) {
 	boost::lock_guard<boost::recursive_mutex> guard(getCommonMutex());
 	asyncSendInProgress = false;
@@ -157,7 +157,7 @@ void TcpConnected::startAsyncReceive(size_t ammount) {
 	}
 }
 
-void TcpConnected::handleReceive(boost::shared_ptr<TcpSocket> socket, const boost::system::error_code &error) {
+void TcpConnected::handleReceive(std::shared_ptr<TcpSocket> socket, const boost::system::error_code &error) {
 	boost::lock_guard<boost::recursive_mutex> guard(getCommonMutex());
 	asyncReceiveInProgress = false;
 	if(error) {
