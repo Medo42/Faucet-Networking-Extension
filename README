@@ -3,7 +3,7 @@ integration of networking into Game Maker games. It is distributed under the ISC
 which is short and simple enough that I don't have to explain it, just read the LICENSE
 file.
 
-I have worked many days to create this library and support its users. If you want to
+I have worked many weeks to create this library and support its users. If you want to
 support me in return, you can use flattr:
 https://flattr.com/thing/350329/The-Faucet-Networking-extension
 
@@ -25,10 +25,9 @@ To create the .gex extension file, you need the following steps:
 Compiling the .dll
 
 For building the .dll I recommend using MinGW, because that's what I use myself
-(version 4.5.2). MSVC should work too, but has not been tested.
+(version 4.8.1). The compiler needs decent C++11 support.
 
 This project requires some libraries from Boost, available from http://www.boost.org
-You need at least Boost 1.47.0 to build this library.
 
 At this time no build script is provided, so start up your favourite IDE and set up
 the following rules:
@@ -36,12 +35,11 @@ the following rules:
   and then linked as a dll.
 - As include directories, you need to set up the Boost include dir as well as the project
   directory itself (i.e. the directory containing the "faucet" source directory)
-- Link statically with the mswsock and ws2_32 libraries, as well as the boost system library
-  and Boost threads. Use the multithreaded static (mt-s) variants for both. Also, statically
-  link with the multithreading-safe standard library.
+- Link statically with the mswsock, ws2_32 and iphlpapi libraries, as well as the boost system
+  library and Boost threads. Use the multithreaded static (mt-s) variants for both. Also,
+  statically link with the multithreading-safe standard library.
 - For compiling with mingw, make sure to add the -mthreads switch to both the compiler and
-  the linker. I'm not sure if this is really required, but the documentation says that this
-  will make exceptions thread-safe, which sounds like a good thing.
+  the linker. Link as -static to avoid depending on external runtime dlls.
   
 Please let me know if it worked, I set this up more or less by trial and error myself :P
 
@@ -55,3 +53,7 @@ faucetNetworking.dll file and switch to the "Misc" tab. Change the "Original Nam
 the pathname where your own .dll is located.
 
 Now you should be able to build the extension (File->Build Package...)
+
+There is also an additional .ged now, called fct_faucetnet.ged. This contains the same functions,
+but prefixed with fct_. This way, we can avoid name collisions that happen in GM_Studio,
+which also defines buffer and networking functions.
