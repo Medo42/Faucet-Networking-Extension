@@ -1,6 +1,4 @@
 #include "GmStringBuffer.hpp"
-
-#define BOOST_THREAD_USE_LIB
 #include<boost/thread.hpp>
 
 boost::thread_specific_ptr<std::string> stringReturnPtr;

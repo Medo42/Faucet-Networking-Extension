@@ -1,7 +1,6 @@
 #include <faucet/Asio.hpp>
 #include <stdexcept>
 
-#define BOOST_THREAD_USE_LIB
 #include <boost/thread.hpp>
 #include <boost/bind.hpp>
 

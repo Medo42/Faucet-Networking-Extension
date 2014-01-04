@@ -48,6 +48,7 @@
 			<Add option="-Wno-unused-parameter" />
 			<Add option="-Wno-strict-aliasing" />
 			<Add option="-D_WIN32_WINNT=0x0501" />
+			<Add option="-DBOOST_THREAD_USE_LIB" />
 			<Add directory="." />
 			<Add directory="C:/Programmieren/boost_1_55_0" />
 		</Compiler>
