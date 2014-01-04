@@ -1,0 +1,108 @@
+<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="Faucet Networking" />
+		<Option platforms="Windows;" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/Faucet Networking" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="3" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Option createStaticLib="1" />
+				<Compiler>
+					<Add option="-g" />
+					<Add option="-DBUILD_DLL" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/Faucet Networking" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="3" />
+				<Option compiler="gcc" />
+				<Option createDefFile="1" />
+				<Option createStaticLib="1" />
+				<Compiler>
+					<Add option="-O2" />
+					<Add option="-DBUILD_DLL" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+				<ExtraCommands>
+					<Add after='upx --best &quot;$(TARGET_OUTPUT_FILE)&quot;' />
+				</ExtraCommands>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-march=i686" />
+			<Add option="-Wextra" />
+			<Add option="-Wall" />
+			<Add option="-std=gnu++11" />
+			<Add option="-mthreads" />
+			<Add option="-Wno-unused-local-typedefs" />
+			<Add option="-Wno-unused-parameter" />
+			<Add option="-Wno-strict-aliasing" />
+			<Add option="-D_WIN32_WINNT=0x0501" />
+			<Add directory="." />
+			<Add directory="C:/Programmieren/boost_1_55_0" />
+		</Compiler>
+		<Linker>
+			<Add option="-mthreads" />
+			<Add option="-static" />
+			<Add library="mswsock" />
+			<Add library="ws2_32" />
+			<Add library="iphlpapi" />
+			<Add library="boost_system-mgw48-mt-s-1_55" />
+			<Add library="boost_thread-mgw48-mt-s-1_55" />
+			<Add directory="C:/Programmieren/boost_1_55_0/stage_11/lib" />
+		</Linker>
+		<Unit filename="faucet/Asio.cpp" />
+		<Unit filename="faucet/Asio.hpp" />
+		<Unit filename="faucet/Buffer.hpp" />
+		<Unit filename="faucet/Fallible.hpp" />
+		<Unit filename="faucet/Future.hpp" />
+		<Unit filename="faucet/GmStringBuffer.cpp" />
+		<Unit filename="faucet/GmStringBuffer.hpp" />
+		<Unit filename="faucet/HandleMap.hpp" />
+		<Unit filename="faucet/Handled.hpp" />
+		<Unit filename="faucet/IpLookup.cpp" />
+		<Unit filename="faucet/IpLookup.hpp" />
+		<Unit filename="faucet/ReadWritable.cpp" />
+		<Unit filename="faucet/ReadWritable.hpp" />
+		<Unit filename="faucet/Socket.hpp" />
+		<Unit filename="faucet/V4FirstIterator.hpp" />
+		<Unit filename="faucet/clipped_cast.hpp" />
+		<Unit filename="faucet/macAddress.cpp" />
+		<Unit filename="faucet/socketApi.cpp" />
+		<Unit filename="faucet/tcp/CombinedTcpAcceptor.cpp" />
+		<Unit filename="faucet/tcp/CombinedTcpAcceptor.hpp" />
+		<Unit filename="faucet/tcp/SendBuffer.hpp" />
+		<Unit filename="faucet/tcp/TcpAcceptor.cpp" />
+		<Unit filename="faucet/tcp/TcpAcceptor.hpp" />
+		<Unit filename="faucet/tcp/TcpSocket.cpp" />
+		<Unit filename="faucet/tcp/TcpSocket.hpp" />
+		<Unit filename="faucet/tcp/connectionStates/ConnectionState.cpp" />
+		<Unit filename="faucet/tcp/connectionStates/ConnectionState.hpp" />
+		<Unit filename="faucet/tcp/connectionStates/TcpClosed.cpp" />
+		<Unit filename="faucet/tcp/connectionStates/TcpClosed.hpp" />
+		<Unit filename="faucet/tcp/connectionStates/TcpConnected.cpp" />
+		<Unit filename="faucet/tcp/connectionStates/TcpConnected.hpp" />
+		<Unit filename="faucet/tcp/connectionStates/TcpConnecting.cpp" />
+		<Unit filename="faucet/tcp/connectionStates/TcpConnecting.hpp" />
+		<Unit filename="faucet/udp/DatagramQueue.hpp" />
+		<Unit filename="faucet/udp/UdpSocket.cpp" />
+		<Unit filename="faucet/udp/UdpSocket.hpp" />
+		<Unit filename="faucet/udp/broadcastAddrs.cpp" />
+		<Unit filename="faucet/udp/broadcastAddrs.hpp" />
+		<Extensions>
+			<code_completion />
+			<envvars />
+			<debugger />
+		</Extensions>
+	</Project>
+</CodeBlocks_project_file>

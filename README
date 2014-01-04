@@ -29,8 +29,11 @@ For building the .dll I recommend using MinGW, because that's what I use myself
 
 This project requires some libraries from Boost, available from http://www.boost.org
 
-At this time no build script is provided, so start up your favourite IDE and set up
-the following rules:
+The Code::Blocks project has a post-build step that requires UPX (http://upx.sourceforge.net/)
+
+A project file for Code::Blocks is provided. You should only need to change the Compiler
+and linker search paths in order to build the project. Alternatively, here are the
+rules needed to build Faucet Net from scratch:
 - all .cpp files in the faucet directory and subdirectories should be compiled
   and then linked as a dll.
 - As include directories, you need to set up the Boost include dir as well as the project
@@ -39,7 +42,9 @@ the following rules:
   library and Boost threads. Use the multithreaded static (mt-s) variants for both. Also,
   statically link with the multithreading-safe standard library.
 - For compiling with mingw, make sure to add the -mthreads switch to both the compiler and
-  the linker. Link as -static to avoid depending on external runtime dlls.
+  the linker. Link as -static to avoid depending on external runtime dlls. Use -std=gnu++11
+  in the compiler (note that boost also needs to be built with that switch to avoid
+  compatibility issues).
   
 Please let me know if it worked, I set this up more or less by trial and error myself :P
 

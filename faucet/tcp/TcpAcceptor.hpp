@@ -6,7 +6,7 @@
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/enable_shared_from_this.hpp>
-#include <boost/thread/recursive_mutex.hpp>
+#include <boost/thread.hpp>
 #include <string>
 
 class TcpSocket;

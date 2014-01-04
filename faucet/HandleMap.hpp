@@ -7,9 +7,6 @@
 #include <boost/shared_ptr.hpp>
 #include <boost/cast.hpp>
 
-#define _WIN32_WINNT 0x0501
-#include <windows.h>
-
 using boost::numeric_cast;
 using boost::numeric::bad_numeric_cast;
 

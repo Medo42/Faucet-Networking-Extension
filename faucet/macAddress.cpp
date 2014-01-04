@@ -1,5 +1,4 @@
-#define _WIN32_WINNT 0x0501
-#include <windows.h>
+#include <winsock2.h>
 #include <Iphlpapi.h>
 #include <Wininet.h>
 #include <cstdlib>

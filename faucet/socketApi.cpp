@@ -12,8 +12,7 @@
 #include <boost/integer.hpp>
 #include <boost/shared_ptr.hpp>
 #include <boost/cast.hpp>
-#include <boost/thread/recursive_mutex.hpp>
-
+#include <boost/thread.hpp>
 #include <limits>
 #include <algorithm>
 #include <cstdio>
