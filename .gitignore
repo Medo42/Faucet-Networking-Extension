@@ -1,8 +1,5 @@
-/.cproject
-/.project
-/.settings
-/Release
-/Debug
 /Faucet Networking.cscope_file_list
 /Faucet Networking.depend
 /Faucet Networking.layout
+/bin
+/obj
