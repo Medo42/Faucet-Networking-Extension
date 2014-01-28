@@ -2,7 +2,6 @@
 #include <stdexcept>
 
 #include <boost/thread.hpp>
-#include <boost/bind.hpp>
 
 void Asio::startup() {
 	if(ioService != 0) {
@@ -10,7 +9,7 @@ void Asio::startup() {
 	}
 	ioService = new boost::asio::io_service();
 	work = new boost::asio::io_service::work(*ioService);
-	butler = new boost::thread(boost::bind(&boost::asio::io_service::run, ioService));
+	butler = new boost::thread([]{ioService->run();});
 }
 
 boost::asio::io_service &Asio::getIoService() {

@@ -64,6 +64,7 @@
 		</Linker>
 		<Unit filename="faucet/Asio.cpp" />
 		<Unit filename="faucet/Asio.hpp" />
+		<Unit filename="faucet/Base64Codec.hpp" />
 		<Unit filename="faucet/Buffer.hpp" />
 		<Unit filename="faucet/Fallible.hpp" />
 		<Unit filename="faucet/Future.hpp" />
@@ -71,6 +72,7 @@
 		<Unit filename="faucet/GmStringBuffer.hpp" />
 		<Unit filename="faucet/HandleMap.hpp" />
 		<Unit filename="faucet/Handled.hpp" />
+		<Unit filename="faucet/HexCodec.hpp" />
 		<Unit filename="faucet/IpLookup.cpp" />
 		<Unit filename="faucet/IpLookup.hpp" />
 		<Unit filename="faucet/ReadWritable.cpp" />

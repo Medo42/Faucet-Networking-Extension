@@ -69,6 +69,9 @@ assertEquals(" Welt", read_string(buffer1, 5));
 assertEquals(1, buffer_bytes_left(buffer1));
 read_string(buffer1, 1);
 
+///////////////////////////////
+// Test hex reading / writing
+///////////////////////////////
 write_hex(buffer1, "466175636574");
 assertEquals(6, buffer_bytes_left(buffer1));
 assertEquals("Faucet", read_string(buffer1, 6));
@@ -85,6 +88,51 @@ assertEquals(0, buffer_bytes_left(buffer1));
 
 write_hex(buffer1, "012345678");
 write_hex(buffer1, "01234S6789");
+assertEquals(0, buffer_bytes_left(buffer1));
+
+//////////////////////////////////
+// Test base64 reading / writing
+//////////////////////////////////
+write_base64(buffer1, "RmF1Y2V0");
+assertEquals(6, buffer_bytes_left(buffer1));
+assertEquals("Faucet", read_string(buffer1, 6));
+
+write_string(buffer1, "Net");
+assertEquals("TmV0", read_base64(buffer1, 3));
+
+// Padding
+write_base64(buffer1, "UGFkZGluZw==");
+assertEquals(7, buffer_bytes_left(buffer1));
+assertEquals("Padding", read_string(buffer1, 7));
+
+write_string(buffer1, "Padding");
+assertEquals("UGFkZGluZw==", read_base64(buffer1, 7));
+
+write_base64(buffer1, "UGFkZGluZ3M=");
+assertEquals(8, buffer_bytes_left(buffer1));
+assertEquals("Paddings", read_string(buffer1, 8));
+
+write_string(buffer1, "Paddings");
+assertEquals("UGFkZGluZ3M=", read_base64(buffer1, 8));
+
+// Padding in the middle of a string (concatenated base64 strings)
+write_base64(buffer1, "UGFkZA==aW5ncw==");
+assertEquals(8, buffer_bytes_left(buffer1));
+assertEquals("Paddings", read_string(buffer1, 8));
+
+// Newline interruptions
+write_base64(buffer1, "RmF"+chr(10)+"1"+chr(13)+chr(10)+"Y2V0");
+assertEquals(6, buffer_bytes_left(buffer1));
+assertEquals("Faucet", read_string(buffer1, 6));
+
+// Invalid codes
+write_base64(buffer1, "0==="); // Bad padding
+assertEquals(0, buffer_bytes_left(buffer1));
+
+write_base64(buffer1, "aaa#"); // Bad character
+assertEquals(0, buffer_bytes_left(buffer1));
+
+write_base64(buffer1, "");
 assertEquals(0, buffer_bytes_left(buffer1));
 
 buffer_destroy(buffer1);

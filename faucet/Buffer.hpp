@@ -50,6 +50,10 @@ public:
 		}
 	}
 
+    size_t getReadpos() const {
+        return readIndex;
+    }
+
 	/**
 	 * Append the given array to the end of the buffer.
 	 */
@@ -81,6 +85,10 @@ public:
 		char *stringStart = (char*)data.data()+readIndex;
 		readIndex += size;
 		return std::string(stringStart, size);
+	}
+
+	void prepareWrite(size_t extraData) {
+		data.reserve(data.size() + extraData);
 	}
 
 	/**

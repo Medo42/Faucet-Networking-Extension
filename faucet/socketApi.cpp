@@ -8,6 +8,8 @@
 #include <faucet/GmStringBuffer.hpp>
 #include <faucet/IpLookup.hpp>
 #include <faucet/ReadWritable.hpp>
+#include <faucet/HexCodec.hpp>
+#include <faucet/Base64Codec.hpp>
 
 #include <boost/integer.hpp>
 #include <boost/cast.hpp>
@@ -19,6 +21,8 @@
 
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
+// TODO: Add function fct_clear_returnbuffer()
+
 using boost::numeric_cast;
 using boost::numeric::bad_numeric_cast;
 
@@ -26,6 +30,9 @@ typedef boost::lock_guard<boost::recursive_mutex> MutexLock;
 
 HandleMap handles = HandleMap();
 std::shared_ptr<UdpSocket> defaultUdpSocket = std::shared_ptr<UdpSocket>();
+
+HexCodec hexCodec = HexCodec();
+Base64Codec base64Codec = Base64Codec();
 
 // TODO: Make the actual implementation properly thread safe instead of making the API single-threaded
 boost::recursive_mutex *apiMutex = new boost::recursive_mutex;
@@ -279,43 +286,26 @@ DLLEXPORT double write_buffer(double destHandle, double bufferHandle) {
 	return 0;
 }
 
-static inline bool isValidHex(const char c)
-{
-	return ('0' <= c && c <= '9') || ('a' <= c && c <= 'f') || ('A' <= c && c <= 'F');
-}
-
-static inline uint8_t getHexValue(const char c)
-{
-	return ('0' <= c && c <= '9') ? (c - '0') :
-	       ('a' <= c && c <= 'f') ? (c - 'a' + 10) :
-	       ('A' <= c && c <= 'F') ? (c - 'A' + 10) :
-	                                0;
-}
-
-DLLEXPORT double write_hex(double handle, const char *hexStr) {
+DLLEXPORT double write_hex(double destHandle, const char *hexStr) {
 	MutexLock lock(*apiMutex);
-	auto writable = handles.find<ReadWritable> (handle);
 
-	if (!writable)
-		return -1;
+    auto dest = handles.find<ReadWritable> (destHandle);
 
-	size_t size = 0;
-	for(const char *pStr = hexStr; *pStr != 0; pStr++) {
-		size++;
-		if(!isValidHex(*pStr))
-			return -2;
-	}
+    if (!dest)
+        return -1;
 
-	if(size & 1) // odd number of characters
-		return -3;
+    return hexCodec.writeHex(hexStr, *dest);
+}
 
-	for(const char *pStr = hexStr; *pStr != 0; pStr+=2) {
-		char c1 = *pStr;
-		char c2 = *(pStr+1);
-		uint8_t byte = (getHexValue(c1) << 4) | getHexValue(c2);
-		writable->write(&byte, 1);
-	}
-	return 1;
+DLLEXPORT double write_base64(double destHandle, const char *hexStr) {
+	MutexLock lock(*apiMutex);
+
+    auto dest = handles.find<ReadWritable> (destHandle);
+
+    if (!dest)
+        return -1;
+
+    return base64Codec.writeBase64(hexStr, *dest);
 }
 
 DLLEXPORT double tcp_receive(double socketHandle, double size) {
@@ -514,37 +504,40 @@ DLLEXPORT const char *read_string(double handle, double len) {
 	MutexLock lock(*apiMutex);
 	auto readWritable = handles.find<ReadWritable> (handle);
 	if (readWritable) {
-		std::string str = readWritable->readString(clipped_cast<size_t> (len));
-		return replaceStringReturnBuffer(str);
+		return replaceStringReturnBuffer(readWritable->readString(clipped_cast<size_t> (len)));
 	} else {
 		return "";
 	}
 }
 
-static inline char getHexDigit(uint8_t nibble)
-{
-	return (nibble <= 9)
-			? ('0' + nibble)
-			: ('a' + nibble - 10);
-}
-
-DLLEXPORT const char *read_hex(double handle, double len) {
+DLLEXPORT const char *read_hex(double srcHandle, double dLen) {
 	MutexLock lock(*apiMutex);
-	auto readWritable = handles.find<ReadWritable> (handle);
 
-	if (readWritable) {
-		std::string str = readWritable->readString(clipped_cast<size_t> (len));
-		std::string result;
-		result.reserve(str.length()*2);
-		for(char c : str) {
-			uint8_t uc = (uint8_t)c;
-			result.push_back(getHexDigit((uc & 0xf0) >> 4));
-			result.push_back(getHexDigit(uc & 0x0f));
-		}
-		return replaceStringReturnBuffer(result);
-	} else {
-		return "";
-	}
+	auto srcBuffer = handles.find<Buffer> (srcHandle);
+	auto srcSocket = handles.find<Socket> (srcHandle);
+
+    size_t len = clipped_cast<size_t>(dLen);
+	if (srcBuffer)
+        return replaceStringReturnBuffer(hexCodec.readHex(*srcBuffer, len));
+    else if(srcSocket)
+        return replaceStringReturnBuffer(hexCodec.readHex(srcSocket->getReceiveBuffer(), len));
+    else
+        return "";
+}
+
+DLLEXPORT const char *read_base64(double srcHandle, double dLen) {
+	MutexLock lock(*apiMutex);
+
+	auto srcBuffer = handles.find<Buffer> (srcHandle);
+	auto srcSocket = handles.find<Socket> (srcHandle);
+
+    size_t len = clipped_cast<size_t>(dLen);
+	if (srcBuffer)
+        return replaceStringReturnBuffer(base64Codec.readBase64(*srcBuffer, len));
+    else if(srcSocket)
+        return replaceStringReturnBuffer(base64Codec.readBase64(srcSocket->getReceiveBuffer(), len));
+    else
+        return "";
 }
 
 // Read the entire file, appending it to the end of the buffer

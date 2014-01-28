@@ -18,6 +18,7 @@ struct QueueItem {
 	uint16_t remotePort;
 };
 
+// TODO check how much copying goes on here, how move semantics might help
 class DatagramQueue {
 private:
 	static const size_t DEFAULT_MEM_LIMIT = 2*1024*1024;

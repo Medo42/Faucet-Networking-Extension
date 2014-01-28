@@ -40,6 +40,12 @@ public:
 	virtual void setReadpos(size_t pos) = 0;
 
 	/**
+	 * The client is about to write this amount of extra data.
+	 * Can be implemented to optimize for this case.
+	 */
+	virtual void prepareWrite(size_t extraData) { }
+
+	/**
 	 * Convert a double to the target integer type and write it to the
 	 * given writable. Fractional numbers are rounded to the nearest integer.
 	 * Values outside of the target type's range will be clamped to the border
