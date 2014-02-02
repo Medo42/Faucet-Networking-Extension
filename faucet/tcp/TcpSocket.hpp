@@ -65,6 +65,10 @@ public:
 
 	void disconnectAbortive();
 
+    /**
+     * Enable / disable the TCP_NODELAY option (= disable / enable Nagle's algorithm)
+     */
+    bool setNoDelay(bool noDelay);
 
 	/**
 	 * Create a new socket representing a connection to the
@@ -83,6 +87,8 @@ public:
 	 */
 	static std::shared_ptr<TcpSocket> fromConnectedSocket(std::shared_ptr<
 			boost::asio::ip::tcp::socket> connectedSocket);
+
+    static const bool DEFAULT_TCP_NODELAY = true;
 
 private:
 	/**
@@ -118,7 +124,7 @@ private:
 	TcpSocket(std::shared_ptr<boost::asio::ip::tcp::socket> socket);
 
 	void enterConnectingState(const char *host, uint16_t port);
-	void enterConnectedState();
+	void enterConnectedState(bool noDelay);
 	void enterClosedState();
 	void enterErrorState(const std::string &message);
 };

@@ -12,6 +12,7 @@
 testIpFunctions();
 testUdpSending();
 testTcpConnecting();
+testTcpNodelay();
 testBitFunctions();
 testFileFunctions();
 

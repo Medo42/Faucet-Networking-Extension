@@ -8,4 +8,5 @@
   <resource name="testUdpSending" type="RESOURCE"/>
   <resource name="testTcpConnecting" type="RESOURCE"/>
   <resource name="testBitFunctions" type="RESOURCE"/>
+  <resource name="testTcpNodelay" type="RESOURCE"/>
 </resources>

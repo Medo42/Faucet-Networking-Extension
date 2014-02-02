@@ -9,7 +9,7 @@ public:
 	TcpConnected(TcpSocket &tcpSocket);
 	virtual ~TcpConnected() {}
 
-	void enter();
+	void enter(bool noDelay);
 
 	virtual void abort();
 
@@ -20,6 +20,7 @@ public:
 	virtual bool isEof();
 	virtual bool receive(size_t ammount);
 	virtual void receive();
+    virtual bool setNoDelay(bool noDelay);
 
 private:
 	bool asyncSendInProgress;

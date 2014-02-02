@@ -12,14 +12,13 @@ TcpConnected::TcpConnected(TcpSocket &tcpSocket) :
 			false), partialReceiveBuffer(), asyncReceiveInProgress(false) {
 }
 
-void TcpConnected::enter() {
+void TcpConnected::enter(bool noDelay) {
 	try {
 		tcp::endpoint remoteEndpoint = getSocket().remote_endpoint();
 		tcp::endpoint localEndpoint = getSocket().local_endpoint();
 		setEndpointInfo(remoteEndpoint.address().to_string(), remoteEndpoint.port(), localEndpoint.port());
 
-		// Disable Nagle's algorithm
-		getSocket().set_option(tcp::no_delay(true));
+		getSocket().set_option(tcp::no_delay(noDelay));
 		getSocket().non_blocking(true);
 	} catch(boost::system::system_error &e) {
 		enterErrorState(e.code().message());
@@ -140,6 +139,12 @@ void TcpConnected::receive() {
 	} catch(boost::system::system_error &e) {
 		enterErrorState(e.code().message());
 	}
+}
+
+bool TcpConnected::setNoDelay(bool noDelay) {
+    boost::system::error_code error;
+    getSocket().set_option(tcp::no_delay(noDelay), error);
+    return !error;
 }
 
 void TcpConnected::startAsyncReceive(size_t ammount) {

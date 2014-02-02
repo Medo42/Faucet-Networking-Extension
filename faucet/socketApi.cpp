@@ -21,7 +21,7 @@
 
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
-// TODO: Add function fct_clear_returnbuffer()
+// TODO: Add function fct_clear_returnbuffer()?
 
 using boost::numeric_cast;
 using boost::numeric::bad_numeric_cast;
@@ -52,6 +52,12 @@ DLLEXPORT double tcp_connect(char *host, double port) {
 	} else {
 		return handles.allocate(TcpSocket::connectTo(host, intPort));
 	}
+}
+
+DLLEXPORT double tcp_set_nodelay(double socketHandle, double nodelay) {
+    MutexLock lock(*apiMutex);
+    auto socket = handles.find<TcpSocket> (socketHandle);
+    return (socket && socket->setNoDelay(nodelay >= 0.5)) ? 1 : -1;
 }
 
 DLLEXPORT double udp_bind(double port) {

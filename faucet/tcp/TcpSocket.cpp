@@ -103,6 +103,11 @@ void TcpSocket::disconnectAbortive() {
 	enterClosedState();
 }
 
+bool TcpSocket::setNoDelay(bool noDelay) {
+    boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
+    return state_->setNoDelay(noDelay);
+}
+
 std::string TcpSocket::getRemoteIp() {
 	boost::lock_guard<boost::recursive_mutex> guard(commonMutex_);
 	return remoteIp_;
@@ -142,7 +147,7 @@ std::shared_ptr<TcpSocket> TcpSocket::fromConnectedSocket(
 	std::shared_ptr<TcpSocket> result(new TcpSocket(connectedSocket));
 	boost::lock_guard<boost::recursive_mutex> guard(result->commonMutex_);
 	result->state_ = &(result->tcpConnected_);
-	result->tcpConnected_.enter();
+	result->tcpConnected_.enter(DEFAULT_TCP_NODELAY);
 	return result;
 }
 
@@ -153,9 +158,9 @@ TcpSocket::TcpSocket(std::shared_ptr<tcp::socket> socket) :
 				std::numeric_limits<size_t>::max()) {
 }
 
-void TcpSocket::enterConnectedState() {
+void TcpSocket::enterConnectedState(bool noDelay) {
 	state_ = &tcpConnected_;
-	tcpConnected_.enter();
+	tcpConnected_.enter(noDelay);
 }
 
 void TcpSocket::enterErrorState(const std::string &message) {

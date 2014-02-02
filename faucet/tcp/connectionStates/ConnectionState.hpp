@@ -57,6 +57,9 @@ public:
 	virtual void receive() {
 		return;
 	}
+	virtual bool setNoDelay(bool noDelay) {
+	    return false;
+	}
 protected:
 	TcpSocket *socket;
 
@@ -66,7 +69,7 @@ protected:
 	 * Indirection functions to prevent having to make all states friends of TcpSocket
 	 */
 	void enterErrorState(const std::string &message);
-	void enterConnectedState();
+	void enterConnectedState(bool noDelay);
 	void setEndpointInfo(std::string remoteIp, uint16_t remotePort, uint16_t localPort);
 	boost::asio::ip::tcp::socket &getSocket();
 	boost::recursive_mutex &getCommonMutex();

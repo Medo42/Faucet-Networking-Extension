@@ -10,8 +10,8 @@ void ConnectionState::enterErrorState(const std::string &message) {
 	socket->enterErrorState(message);
 }
 
-void ConnectionState::enterConnectedState() {
-	socket->enterConnectedState();
+void ConnectionState::enterConnectedState(bool noDelay) {
+	socket->enterConnectedState(noDelay);
 }
 
 void ConnectionState::setEndpointInfo(std::string remoteIp, uint16_t remotePort, uint16_t localPort) {

@@ -23,9 +23,11 @@ public:
 	virtual bool isEof() {
 		return false;
 	}
+	virtual bool setNoDelay(bool noDelay);
 private:
 	boost::asio::ip::tcp::resolver resolver;
 	bool abortRequested;
+	bool noDelay_;
 
 	typedef boost::asio::ip::tcp::resolver::protocol_type protocol_type;
 	void handleResolve(std::shared_ptr<TcpSocket> tcpSocket,

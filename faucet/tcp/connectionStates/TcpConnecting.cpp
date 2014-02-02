@@ -9,8 +9,10 @@
 using namespace boost::asio::ip;
 
 TcpConnecting::TcpConnecting(TcpSocket &socket) :
-	ConnectionState(socket), resolver(Asio::getIoService()), abortRequested(
-			false) {
+	ConnectionState(socket),
+	resolver(Asio::getIoService()),
+	abortRequested(false),
+	noDelay_(TcpSocket::DEFAULT_TCP_NODELAY) {
 }
 
 void TcpConnecting::enter(const char *host, uint16_t port) {
@@ -24,6 +26,11 @@ void TcpConnecting::enter(const char *host, uint16_t port) {
 void TcpConnecting::abort() {
 	resolver.cancel();
 	abortRequested = true;
+}
+
+bool TcpConnecting::setNoDelay(bool noDelay) {
+    noDelay_ = noDelay;
+    return true;
 }
 
 void TcpConnecting::handleResolve(std::shared_ptr<TcpSocket> socket,
@@ -70,7 +77,7 @@ void TcpConnecting::handleConnect(std::shared_ptr<TcpSocket> socket,
 	}
 
 	if (!error) {
-		enterConnectedState();
+		enterConnectedState(noDelay_);
 	} else if (endpoints.hasNext()) {
 		boost::system::error_code ec;
 		if(startConnectionAttempt(socket, endpoints, ec)) {
