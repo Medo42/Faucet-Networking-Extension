@@ -22,6 +22,9 @@
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
 // TODO: Add function fct_clear_returnbuffer()?
+// TODO: split up this file
+// TODO: Add a header file for use from C / C++
+// TODO:
 
 using boost::numeric_cast;
 using boost::numeric::bad_numeric_cast;
@@ -33,6 +36,17 @@ std::shared_ptr<UdpSocket> defaultUdpSocket = std::shared_ptr<UdpSocket>();
 
 HexCodec hexCodec = HexCodec();
 Base64Codec base64Codec = Base64Codec();
+
+static Buffer *getBufferOrReceiveBuffer(double handle)
+{
+    auto buffer = handles.find<Buffer> (handle);
+	auto socket = handles.find<Socket> (handle);
+
+    return
+        buffer ? buffer.get() :
+        socket ? &(socket->getReceiveBuffer()) :
+                 nullptr;
+}
 
 // TODO: Make the actual implementation properly thread safe instead of making the API single-threaded
 boost::recursive_mutex *apiMutex = new boost::recursive_mutex;
@@ -277,18 +291,11 @@ DLLEXPORT double write_buffer_part(double destHandle, double bufferHandle, doubl
 DLLEXPORT double write_buffer(double destHandle, double bufferHandle) {
 	MutexLock lock(*apiMutex);
 	auto dest = handles.find<ReadWritable> (destHandle);
-	auto srcBuffer = handles.find<Buffer> (bufferHandle);
-	auto srcSocket = handles.find<Socket> (bufferHandle);
+	auto src = getBufferOrReceiveBuffer(bufferHandle);
 
-	if (dest && srcBuffer) {
-		size_t oldReadPos = srcBuffer->size()-srcBuffer->bytesRemaining();
-		srcBuffer->setReadpos(0);
-		write_buffer_part(destHandle, bufferHandle, srcBuffer->size());
-		srcBuffer->setReadpos(oldReadPos);
-	} else if (dest && srcSocket) {
-		dest->write(srcSocket->getReceiveBuffer().getData(),
-				srcSocket->getReceiveBuffer().size());
-	}
+	if(dest && src)
+        dest->write(src->getData(), src->size());
+
 	return 0;
 }
 
@@ -519,31 +526,21 @@ DLLEXPORT const char *read_string(double handle, double len) {
 DLLEXPORT const char *read_hex(double srcHandle, double dLen) {
 	MutexLock lock(*apiMutex);
 
-	auto srcBuffer = handles.find<Buffer> (srcHandle);
-	auto srcSocket = handles.find<Socket> (srcHandle);
-
+    auto src = getBufferOrReceiveBuffer(srcHandle);
     size_t len = clipped_cast<size_t>(dLen);
-	if (srcBuffer)
-        return replaceStringReturnBuffer(hexCodec.readHex(*srcBuffer, len));
-    else if(srcSocket)
-        return replaceStringReturnBuffer(hexCodec.readHex(srcSocket->getReceiveBuffer(), len));
-    else
-        return "";
+    if(src)
+        return replaceStringReturnBuffer(hexCodec.readHex(*src, len));
+    return "";
 }
 
 DLLEXPORT const char *read_base64(double srcHandle, double dLen) {
 	MutexLock lock(*apiMutex);
 
-	auto srcBuffer = handles.find<Buffer> (srcHandle);
-	auto srcSocket = handles.find<Socket> (srcHandle);
-
+	auto src = getBufferOrReceiveBuffer(srcHandle);
     size_t len = clipped_cast<size_t>(dLen);
-	if (srcBuffer)
-        return replaceStringReturnBuffer(base64Codec.readBase64(*srcBuffer, len));
-    else if(srcSocket)
-        return replaceStringReturnBuffer(base64Codec.readBase64(srcSocket->getReceiveBuffer(), len));
-    else
-        return "";
+	if (src)
+        return replaceStringReturnBuffer(base64Codec.readBase64(*src, len));
+    return "";
 }
 
 // Read the entire file, appending it to the end of the buffer
@@ -589,14 +586,13 @@ DLLEXPORT double append_file_to_buffer(double handle, const char *filename) {
 // Overwrite or create the file provided with the contents of the buffer
 DLLEXPORT double write_buffer_to_file(double handle, const char *filename) {
 	MutexLock lock(*apiMutex);
-	auto buffer = handles.find<Buffer> (handle);
-	auto socket = handles.find<Socket> (handle);
+	auto src = getBufferOrReceiveBuffer(handle);
 
-	if(!buffer && !socket) {
+	if(!src) {
 		return -10;
 	}
 
-	Buffer &srcBuffer = buffer ? *buffer : socket->getReceiveBuffer();
+	Buffer &srcBuffer = *src;
 
 	FILE *f = fopen(filename, "wb");
 	if(f == NULL) {
