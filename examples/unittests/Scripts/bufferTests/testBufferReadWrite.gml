@@ -69,6 +69,30 @@ assertEquals(" Welt", read_string(buffer1, 5));
 assertEquals(1, buffer_bytes_left(buffer1));
 read_string(buffer1, 1);
 
+///////////////////////////////////
+// Test reading delimited strings
+///////////////////////////////////
+assertTrue(is_real(read_delimited_string(0, "-")), "read_delimited_string should return a number if the buffer does not exist");
+
+write_string(buffer1, "abcdef");
+assertTrue(is_real(read_delimited_string(buffer1, "-")), "read_delimited_string should return a number if the delimiter is not found");
+assertEquals("", read_delimited_string(buffer1, ""), "read_delimited_string with empty delimiter should return an empty string");
+assertEquals("a", read_delimited_string(buffer1, "b"), "read_delimited_string should work for single-character delimiters");
+assertEquals("c", read_delimited_string(buffer1, "de"), "read_delimited_string should work for multi-character delimiters");
+assertEquals("", read_delimited_string(buffer1, "f"), "read_delimited_string should work for empty delimited strings");
+assertEquals(0, buffer_bytes_left(buffer1), "read_delimited_string tests should not leave any data in the buffer");
+
+assertTrue(is_real(read_cstring(0)), "read_cstring should return a number if the buffer does not exist");
+
+write_string(buffer1, "abc");
+assertTrue(is_real(read_cstring(buffer1)), "read_cstring should return a number if the buffer does not contain a 0-byte after the readpos");
+write_ubyte(buffer1, 0);
+write_string(buffer1, "def");
+write_ubyte(buffer1, 0);
+assertEquals("abc", read_cstring(buffer1), "read_cstring should read up to the first 0-byte in the string.");
+assertEquals("def", read_cstring(buffer1));
+assertEquals(0, buffer_bytes_left(buffer1), "read_cstring tests should not leave any data in the buffer");
+
 ///////////////////////////////
 // Test hex reading / writing
 ///////////////////////////////

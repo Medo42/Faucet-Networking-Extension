@@ -523,6 +523,36 @@ DLLEXPORT const char *read_string(double handle, double len) {
 	}
 }
 
+static const char *readDelimitedString(double handle, const char *delimStart, const char *delimEnd) {
+    Buffer *buffer = getBufferOrReceiveBuffer(handle);
+	if(buffer) {
+        const char* bufStart = reinterpret_cast<const char*>(buffer->getData());
+        const char* bufReadPtr = bufStart + buffer->getReadpos();
+        const char* bufEnd = bufStart + buffer->size();
+
+        const char* delimInBuf = std::search(bufReadPtr, bufEnd, delimStart, delimEnd);
+        if(delimInBuf != bufEnd) {
+            const char *result = replaceStringReturnBuffer(std::string(bufReadPtr, delimInBuf));
+            size_t delimLen = delimEnd-delimStart;
+            buffer->setReadpos(delimInBuf + delimLen - bufStart);
+            return result;
+        }
+	}
+
+	return "";
+}
+
+DLLEXPORT const char *_fnet_hidden_read_delimited_string(double handle, const char *delimiter) {
+	MutexLock lock(*apiMutex);
+	return readDelimitedString(handle, delimiter, delimiter+strlen(delimiter));
+}
+
+DLLEXPORT const char *_fnet_hidden_read_cstring(double handle) {
+	MutexLock lock(*apiMutex);
+	const char delimiter = 0;
+	return readDelimitedString(handle, &delimiter, (&delimiter)+1);
+}
+
 DLLEXPORT const char *read_hex(double srcHandle, double dLen) {
 	MutexLock lock(*apiMutex);
 
