@@ -288,14 +288,22 @@ DLLEXPORT double write_buffer_part(double destHandle, double bufferHandle, doubl
 	return 0;
 }
 
+// Attn: Do not take the shortcut of writing directly from src to dest if they might be the same buffer. vector doesn't like inserting into itself.
 DLLEXPORT double write_buffer(double destHandle, double bufferHandle) {
 	MutexLock lock(*apiMutex);
 	auto dest = handles.find<ReadWritable> (destHandle);
-	auto src = getBufferOrReceiveBuffer(bufferHandle);
+	auto srcBuffer = handles.find<Buffer> (bufferHandle);
+	auto srcSocket = handles.find<Socket> (bufferHandle);
 
-	if(dest && src)
-        dest->write(src->getData(), src->size());
-
+	if (dest && srcBuffer) {
+		size_t oldReadPos = srcBuffer->size()-srcBuffer->bytesRemaining();
+		srcBuffer->setReadpos(0);
+		write_buffer_part(destHandle, bufferHandle, srcBuffer->size());
+		srcBuffer->setReadpos(oldReadPos);
+	} else if (dest && srcSocket) {
+		dest->write(srcSocket->getReceiveBuffer().getData(),
+				srcSocket->getReceiveBuffer().size());
+	}
 	return 0;
 }
 
