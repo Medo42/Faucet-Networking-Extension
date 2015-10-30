@@ -121,6 +121,24 @@ DLLEXPORT double socket_accept(double handle) {
 	return -1;
 }
 
+DLLEXPORT double tcp_listening_v4(double handle) {
+	MutexLock lock(*apiMutex);
+	auto acceptor = handles.find<CombinedTcpAcceptor> (handle);
+	if (acceptor) {
+		return acceptor->isListeningV4();
+	}
+	return false;
+}
+
+DLLEXPORT double tcp_listening_v6(double handle) {
+	MutexLock lock(*apiMutex);
+	auto acceptor = handles.find<CombinedTcpAcceptor> (handle);
+	if (acceptor) {
+		return acceptor->isListeningV6();
+	}
+	return false;
+}
+
 DLLEXPORT double socket_has_error(double handle) {
 	MutexLock lock(*apiMutex);
 	auto fallible = handles.find<Fallible> (handle);

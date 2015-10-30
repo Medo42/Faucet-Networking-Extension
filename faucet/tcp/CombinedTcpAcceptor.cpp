@@ -28,7 +28,6 @@ CombinedTcpAcceptor::CombinedTcpAcceptor(uint16_t port) :
 
 	try {
 		v4acceptor->open(tcp::v4());
-		v4acceptor->set_option(tcp::acceptor::reuse_address(true));
 		v4acceptor->bind(tcp::endpoint(tcp::v4(), localPort_));
 		v4acceptor->listen();
 		localPort_ = v4acceptor->local_endpoint().port();
@@ -43,7 +42,6 @@ CombinedTcpAcceptor::CombinedTcpAcceptor(uint16_t port) :
 		try {
 			v6acceptor->open(tcp::v6());
 			v6acceptor->set_option(v6_only(true), ignoredError);
-			v6acceptor->set_option(tcp::acceptor::reuse_address(true));
 			v6acceptor->bind(tcp::endpoint(tcp::v6(), localPort_));
 			v6acceptor->listen();
 			localPort_ = v6acceptor->local_endpoint().port();
@@ -99,4 +97,12 @@ std::shared_ptr<TcpSocket> CombinedTcpAcceptor::accept() {
 
 uint16_t CombinedTcpAcceptor::getLocalPort() {
 	return localPort_;
+}
+
+bool CombinedTcpAcceptor::isListeningV4() {
+	return !v4Acceptor_->hasError();
+}
+
+bool CombinedTcpAcceptor::isListeningV6() {
+	return !v6Acceptor_->hasError();
 }

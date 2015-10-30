@@ -28,6 +28,10 @@ public:
 	std::shared_ptr<TcpSocket> accept();
 
 	uint16_t getLocalPort();
+
+	bool isListeningV4();
+	bool isListeningV6();
+
 private:
 	std::shared_ptr<TcpAcceptor> v4Acceptor_, v6Acceptor_;
 	bool checkV6First_;
