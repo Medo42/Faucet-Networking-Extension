@@ -15,14 +15,15 @@ CombinedTcpAcceptor::CombinedTcpAcceptor(uint16_t port) :
 
 	if (localPort_ == 0) {
 		try {
-			v6acceptor->open(tcp::v6());
-			v6acceptor->set_option(v6_only(false));
-			v6acceptor->bind(tcp::endpoint(tcp::v6(), localPort_));
-			v6acceptor->listen();
-			localPort_ = v6acceptor->local_endpoint().port();
+			tcp::acceptor dualstack_placeholder(Asio::getIoService());
+			dualstack_placeholder.open(tcp::v6());
+			dualstack_placeholder.set_option(v6_only(false));
+			dualstack_placeholder.bind(tcp::endpoint(tcp::v6(), localPort_));
+			dualstack_placeholder.listen();
+			localPort_ = dualstack_placeholder.local_endpoint().port();
+			dualstack_placeholder.close(ignoredError);
 		} catch (boost::system::system_error &e) {
 			// Error -> Probably no dual stack support or no v6 support at all
-			v6acceptor->close(ignoredError);
 		}
 	}
 
@@ -37,18 +38,15 @@ CombinedTcpAcceptor::CombinedTcpAcceptor(uint16_t port) :
 		v4acceptor->close(ignoredError);
 	}
 
-	if (!v6acceptor->is_open()) {
-		// We didn't create a dual stack socket earlier, try simple v6
-		try {
-			v6acceptor->open(tcp::v6());
-			v6acceptor->set_option(v6_only(true), ignoredError);
-			v6acceptor->bind(tcp::endpoint(tcp::v6(), localPort_));
-			v6acceptor->listen();
-			localPort_ = v6acceptor->local_endpoint().port();
-		} catch (boost::system::system_error &e) {
-			v6Error = e.code();
-			v6acceptor->close(ignoredError);
-		}
+	try {
+		v6acceptor->open(tcp::v6());
+		v6acceptor->set_option(v6_only(true), ignoredError);
+		v6acceptor->bind(tcp::endpoint(tcp::v6(), localPort_));
+		v6acceptor->listen();
+		localPort_ = v6acceptor->local_endpoint().port();
+	} catch (boost::system::system_error &e) {
+		v6Error = e.code();
+		v6acceptor->close(ignoredError);
 	}
 
 	if(v4acceptor->is_open()) {

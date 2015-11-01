@@ -23,25 +23,25 @@ UdpSocket::~UdpSocket() {
 /*
  * This code is intended to work on both WinXP and Vista/7, and allow binding to a random
  * unused port. Unfortunately there is no "safe" way to bind the same unused port for IPv4
- * and IPv6 in WinXP, and unfortunately binding a port with a Vista dual stack socket will
- * succeed even if the port is in use for IPv4 already, which would leave you with an IPv6
- * only socket which is not useful for most people at the moment.
+ * and IPv6 in WinXP. Further, Vista's dual stack sockets don't work as expected with
+ * regard to port re-use. Specifically, they apparently allow you to bind another pure
+ * IPv4 and/or IPv6 socket to the same port within your application.
  *
- * To work around these problems, I'm making some assumptions: First, binding a dual stack
- * socket to an unused port will actually bind to a port that is unused for both IPv4 and
- * IPv6, and not just for IPv6. Second, "displacing" the v4 part of a dual stack socket by
- * binding an explicit IPv4 socket to the same port is a well-behaved operation. Based on
- * this, here is how we bind:
+ * To work around these problems, this is now done the following way:
  *
  * If the port number is not 0, we simply try binding an IPv4 and IPv6 socket to the given
- * port. If it is 0 and we are on Vista/7, we bind a dual stack socket first and steal its
- * IPv4 part for a seperate socket afterwards, which should always work if the assumptions
- * above hold. On WinXP with port 0, the dual stack socket creation will fail, and we just
- * attempt to open an IPv4 socket with an unused port, and then an IPv6 socket on the same
- * port.
+ * port. If it is 0 and we are on Vista/7, we bind a dual stack socket first just to get
+ * a port number assigned from the operating system which is free for both IPv4 and IPv6.
+ * We remember the port number and then close that socket again, and then proceed just as
+ * if that port had been given in the first place.
+ * On WinXP with port 0, the dual stack socket creation will fail, and we just attempt to
+ * open an IPv4 socket with an unused port, and then an IPv6 socket on the same port.
  *
  * As a consequence, this operation is not reliable on WinXP, since the IPv6 part may fail
- * even though there might be free ports available.
+ * even though there might be free ports available. It's also not reliable on Vista and
+ * later because another process might steal the port after we close the dual stack socket,
+ * but before we bind the other sockets. However, that seems rather unlikely in real-world
+ * scenarios.
  */
 std::shared_ptr<UdpSocket> UdpSocket::bind(uint16_t portnr) {
 	std::shared_ptr<UdpSocket> socketPtr(new UdpSocket());
@@ -49,14 +49,14 @@ std::shared_ptr<UdpSocket> UdpSocket::bind(uint16_t portnr) {
 
 	if (portnr == 0) {
 		try {
-			socketPtr->ipv6socket_.open(udp::v6());
-			socketPtr->ipv6socket_.set_option(udp::socket::broadcast(true));
-			socketPtr->ipv6socket_.set_option(v6_only(false));
-			socketPtr->ipv6socket_.bind(udp::endpoint(udp::v6(), portnr));
-			portnr = socketPtr->ipv6socket_.local_endpoint().port();
+		    udp::socket dualstack_placeholder(Asio::getIoService());
+			dualstack_placeholder.open(udp::v6());
+			dualstack_placeholder.set_option(v6_only(false));
+			dualstack_placeholder.bind(udp::endpoint(udp::v6(), portnr));
+			portnr = dualstack_placeholder.local_endpoint().port();
+			dualstack_placeholder.close(ignoredError);
 		} catch (boost::system::system_error &e) {
 			// Error -> Probably no dual stack support or no v6 support at all
-			socketPtr->ipv6socket_.close(ignoredError);
 		}
 	}
 
@@ -71,19 +71,16 @@ std::shared_ptr<UdpSocket> UdpSocket::bind(uint16_t portnr) {
 		socketPtr->ipv4socket_.close(ignoredError);
 	}
 
-	if (!socketPtr->ipv6socket_.is_open()) {
-		// We didn't create a dual stack socket earlier, try simple v6
-		try {
-			socketPtr->ipv6socket_.open(udp::v6());
-			socketPtr->ipv6socket_.set_option(udp::socket::broadcast(true));
-			socketPtr->ipv6socket_.set_option(v6_only(true), ignoredError);
-			socketPtr->ipv6socket_.bind(udp::endpoint(udp::v6(), portnr));
-			portnr = socketPtr->ipv6socket_.local_endpoint().port();
-		} catch (boost::system::system_error &e) {
-			v6Error = e.code();
-			socketPtr->ipv6socket_.close(ignoredError);
-		}
-	}
+    try {
+        socketPtr->ipv6socket_.open(udp::v6());
+        socketPtr->ipv6socket_.set_option(udp::socket::broadcast(true));
+        socketPtr->ipv6socket_.set_option(v6_only(true), ignoredError);
+        socketPtr->ipv6socket_.bind(udp::endpoint(udp::v6(), portnr));
+        portnr = socketPtr->ipv6socket_.local_endpoint().port();
+    } catch (boost::system::system_error &e) {
+        v6Error = e.code();
+        socketPtr->ipv6socket_.close(ignoredError);
+    }
 
 	if (!socketPtr->ipv4socket_.is_open()
 			&& !socketPtr->ipv6socket_.is_open()) {
@@ -101,6 +98,7 @@ std::shared_ptr<UdpSocket> UdpSocket::bind(uint16_t portnr) {
 			socketPtr->asyncReceive(&(socketPtr->ipv6socket_), buf);
 		}
 	}
+
 	return socketPtr;
 }
 
