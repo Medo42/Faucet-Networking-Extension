@@ -8,11 +8,13 @@
 #include <string>
 #include <memory>
 
+#include <faucet/resolve.hpp>
+
 class IpLookup: public Handled,
 		boost::noncopyable {
 public:
 	static std::shared_ptr<IpLookup> lookup(const char *lookup);
-	static std::shared_ptr<IpLookup> lookup(const char *lookup, const boost::asio::ip::tcp::resolver::protocol_type &protocol);
+	static std::shared_ptr<IpLookup> lookup(const char *lookup, fct_lookup_protocol protocol);
 
 	bool ready();
 	bool hasNext();

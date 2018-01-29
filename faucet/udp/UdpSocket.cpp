@@ -1,6 +1,7 @@
 #include "UdpSocket.hpp"
 
 #include "broadcastAddrs.hpp"
+#include <faucet/resolve.hpp>
 
 #include <boost/lexical_cast.hpp>
 #include <boost/make_shared.hpp>
@@ -242,15 +243,8 @@ void UdpSocket::asyncSend() {
 	sendqueue_.pop();
 	asyncSendInProgress_ = true;
 
-	boost::system::error_code ec;
-	udp::endpoint endpoint(address::from_string(item.remoteHost, ec), item.remotePort);
-	if(!ec) {
-		handleResolve(ec, udp::resolver::iterator::create(endpoint, "", ""), item.buffer);
-	} else {
-		udp::resolver::query query(item.remoteHost, boost::lexical_cast<std::string>(item.remotePort), udp::resolver::query::numeric_service | udp::resolver::query::address_configured);
-		resolver_.async_resolve(query, boost::bind(&UdpSocket::handleResolve, shared_from_this(),
+    fct_async_resolve<udp>(item.remoteHost, item.remotePort, resolver_, boost::bind(&UdpSocket::handleResolve, shared_from_this(),
 				boost::asio::placeholders::error, boost::asio::placeholders::iterator, item.buffer));
-	}
 }
 
 udp::socket *UdpSocket::getAppropriateSocket(const udp::endpoint &endpoint) {

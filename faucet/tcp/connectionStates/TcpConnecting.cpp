@@ -6,6 +6,8 @@
 #include <boost/bind.hpp>
 #include <boost/thread/locks.hpp>
 
+#include <faucet/resolve.hpp>
+
 using namespace boost::asio::ip;
 
 TcpConnecting::TcpConnecting(TcpSocket &socket) :
@@ -16,9 +18,7 @@ TcpConnecting::TcpConnecting(TcpSocket &socket) :
 }
 
 void TcpConnecting::enter(const char *host, uint16_t port) {
-	tcp::resolver::query query(host, boost::lexical_cast<std::string>(port),
-			tcp::resolver::query::numeric_service | tcp::resolver::query::address_configured);
-	resolver.async_resolve(query, boost::bind(&TcpConnecting::handleResolve,
+    fct_async_resolve<tcp>(host, port, resolver, boost::bind(&TcpConnecting::handleResolve,
 			this, socket->shared_from_this(), boost::asio::placeholders::error,
 			boost::asio::placeholders::iterator));
 }

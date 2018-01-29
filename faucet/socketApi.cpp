@@ -799,12 +799,12 @@ DLLEXPORT double ip_lookup_create(const char *host) {
 
 DLLEXPORT double ipv4_lookup_create(const char *host) {
 	MutexLock lock(*apiMutex);
-	return handles.allocate(IpLookup::lookup(host, boost::asio::ip::tcp::v4()));
+	return handles.allocate(IpLookup::lookup(host, fct_lookup_protocol::V4));
 }
 
 DLLEXPORT double ipv6_lookup_create(const char *host) {
 	MutexLock lock(*apiMutex);
-	return handles.allocate(IpLookup::lookup(host, boost::asio::ip::tcp::v6()));
+	return handles.allocate(IpLookup::lookup(host, fct_lookup_protocol::V6));
 }
 
 DLLEXPORT double ip_lookup_ready(double lookupHandle) {

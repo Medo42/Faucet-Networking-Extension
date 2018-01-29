@@ -7,17 +7,15 @@
 using namespace boost::asio::ip;
 std::shared_ptr<IpLookup> IpLookup::lookup(const char *lookup) {
 	std::shared_ptr<IpLookup> ipLookup (new IpLookup());
-	tcp::resolver::query query(lookup, "", tcp::resolver::query::address_configured);
-	ipLookup->resolver_.async_resolve(query, boost::bind(&IpLookup::handleResolve,
+	fct_async_resolve<tcp>(lookup, 0, ipLookup->resolver_, boost::bind(&IpLookup::handleResolve,
 			ipLookup, boost::asio::placeholders::error, boost::asio::placeholders::iterator));
 	return ipLookup;
 }
 
-std::shared_ptr<IpLookup> IpLookup::lookup(const char *lookup, const tcp::resolver::protocol_type &protocol) {
+std::shared_ptr<IpLookup> IpLookup::lookup(const char *lookup, fct_lookup_protocol protocol) {
 	std::shared_ptr<IpLookup> ipLookup (new IpLookup());
-	tcp::resolver::query query(protocol, lookup, "", tcp::resolver::query::address_configured);
-	ipLookup->resolver_.async_resolve(query, boost::bind(&IpLookup::handleResolve,
-			ipLookup, boost::asio::placeholders::error, boost::asio::placeholders::iterator));
+    fct_async_resolve<tcp>(lookup, 0, ipLookup->resolver_, boost::bind(&IpLookup::handleResolve,
+        ipLookup, boost::asio::placeholders::error, boost::asio::placeholders::iterator), protocol);
 	return ipLookup;
 }
 
