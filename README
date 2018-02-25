@@ -51,8 +51,12 @@ Please let me know if it worked, I set this up more or less by trial and error m
 
 Creating the .gex
 
-For this task you need the GM Extension Maker, which you can download from
-http://www.yoyogames.com/make/extensions . Open the extension description file (faucetnet.ged)
+For this task you need the GM Extension Maker. It used to be available for download from Yoyo
+games at http://www.yoyogames.com/make/extensions, but unfortunately they no longer have it on
+their website. You can still download it from the Internet Archive though:
+https://web.archive.org/web/20111209035249/http://sandbox.yoyogames.com/downloads/extensions/extmaker.zip
+
+Open the extension description file (faucetnet.ged)
 in the main project directory. You'll have to adapt it to work for you, so click on the 
 faucetNetworking.dll file and switch to the "Misc" tab. Change the "Original Name" to
 the pathname where your own .dll is located.
