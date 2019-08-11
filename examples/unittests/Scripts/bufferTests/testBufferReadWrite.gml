@@ -159,4 +159,56 @@ assertEquals(0, buffer_bytes_left(buffer1));
 write_base64(buffer1, "");
 assertEquals(0, buffer_bytes_left(buffer1));
 
+//////////////////////////////////
+// Test writing binary strings
+//////////////////////////////////
+write_binary_string(buffer1, "Hallo Welt!");
+assertEquals(11, buffer_bytes_left(buffer1));
+assertEquals("Hallo Welt!", read_string(buffer1, 11));
+
+write_binary_string(buffer1, "Hallo"+chr(0)+"Welt!");
+assertEquals(11, buffer_bytes_left(buffer1));
+assertEquals("48616c6c6f0057656c7421", read_hex(buffer1, 11));
+
+write_binary_string(buffer1, chr(0));
+assertEquals(1, buffer_bytes_left(buffer1));
+assertEquals("00", read_hex(buffer1, 1));
+
+write_binary_string(buffer1, "");
+assertEquals(0, buffer_bytes_left(buffer1));
+
+//////////////////////////////////
+// Test reading binary strings
+//////////////////////////////////
+write_binary_string(buffer1, "Hallo"+chr(0)+"Welt!");
+assertEquals("Hallo"+chr(0)+"Welt!", read_binary_string(buffer1, 11));
+assertEquals(0, buffer_bytes_left(buffer1));
+
+write_binary_string(buffer1, "Hallo"+chr(0)+"Welt!");
+assertEquals("Hallo"+chr(0)+"Welt", read_binary_string(buffer1, 10));
+assertEquals("", read_binary_string(buffer1, 0));
+assertEquals("!", read_binary_string(buffer1, 10));
+
+/////////////////////////////////////////
+// Test reading delimited binary strings
+/////////////////////////////////////////
+
+write_binary_string(buffer1, "Hallo"+chr(0)+"Welt"+chr(0)+"!");
+assertEquals("Hallo", read_delimited_binary_string(buffer1, chr(0)));
+assertEquals("Welt", read_delimited_binary_string(buffer1, chr(0)));
+assertEquals(-1, read_delimited_binary_string(buffer1, chr(0)));
+assertEquals("!", read_binary_string(buffer1, 100));
+
+write_binary_string(buffer1, "Hallo"+chr(0)+"Welt"+chr(0)+"!");
+assertEquals("Ha", read_delimited_binary_string(buffer1, "l"));
+assertEquals("", read_delimited_binary_string(buffer1, "l"));
+assertEquals("o"+chr(0)+"We", read_delimited_binary_string(buffer1, "l"));
+assertEquals(-1, read_delimited_binary_string(buffer1, "l"));
+assertEquals("t"+chr(0)+"!", read_binary_string(buffer1, 100));
+
+write_binary_string(buffer1, "Hallo"+chr(0)+"Wolt"+chr(0)+"!");
+assertEquals("Hall", read_delimited_binary_string(buffer1, "o"+chr(0)));
+assertEquals(-1, read_delimited_binary_string(buffer1, "o"+chr(0)));
+assertEquals("Wolt"+chr(0)+"!", read_binary_string(buffer1, 100));
+
 buffer_destroy(buffer1);

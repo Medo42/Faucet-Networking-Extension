@@ -81,6 +81,7 @@
 		<Unit filename="faucet/V4FirstIterator.hpp" />
 		<Unit filename="faucet/clipped_cast.hpp" />
 		<Unit filename="faucet/macAddress.cpp" />
+		<Unit filename="faucet/resolve.hpp" />
 		<Unit filename="faucet/socketApi.cpp" />
 		<Unit filename="faucet/tcp/CombinedTcpAcceptor.cpp" />
 		<Unit filename="faucet/tcp/CombinedTcpAcceptor.hpp" />

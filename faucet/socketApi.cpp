@@ -21,6 +21,9 @@
 
 #define DLLEXPORT extern "C" __declspec(dllexport)
 
+#define GM8_STRLEN(gm_str) \
+  (*(uint32_t*)(((const char*)gm_str) - sizeof(uint32_t)))
+
 // TODO: Add function fct_clear_returnbuffer()?
 // TODO: split up this file
 // TODO: Add a header file for use from C / C++
@@ -46,6 +49,19 @@ static Buffer *getBufferOrReceiveBuffer(double handle)
         buffer ? buffer.get() :
         socket ? &(socket->getReceiveBuffer()) :
                  nullptr;
+}
+
+DLLEXPORT double dllStartup() {
+	ReadWritable::setLittleEndianDefault(false);
+	Asio::startup();
+	return 0;
+}
+
+DLLEXPORT double dllShutdown() {
+	defaultUdpSocket.reset();
+	handles.releaseAll();
+	Asio::shutdown();
+	return 0;
 }
 
 // TODO: Make the actual implementation properly thread safe instead of making the API single-threaded
@@ -283,6 +299,16 @@ DLLEXPORT double write_string(double handle, const char *str) {
 	return 0;
 }
 
+DLLEXPORT double write_binary_string(double handle, const char *str) {
+	MutexLock lock(*apiMutex);
+	auto writable = handles.find<ReadWritable> (handle);
+	if (writable) {
+		size_t size = GM8_STRLEN(str);
+		writable->write(reinterpret_cast<const uint8_t *> (str), size);
+	}
+	return 0;
+}
+
 DLLEXPORT double write_buffer_part(double destHandle, double bufferHandle, double ammount) {
 	MutexLock lock(*apiMutex);
 	auto dest = handles.find<ReadWritable> (destHandle);
@@ -426,19 +452,6 @@ DLLEXPORT double socket_sendbuffer_limit(double socketHandle, double sizeLimit) 
 	return 0;
 }
 
-DLLEXPORT double dllStartup() {
-	ReadWritable::setLittleEndianDefault(false);
-	Asio::startup();
-	return 0;
-}
-
-DLLEXPORT double dllShutdown() {
-	defaultUdpSocket.reset();
-	handles.releaseAll();
-	Asio::shutdown();
-	return 0;
-}
-
 /*********************************************
  * Buffer functions
  */
@@ -549,8 +562,23 @@ DLLEXPORT const char *read_string(double handle, double len) {
 	}
 }
 
-static const char *readDelimitedString(double handle, const char *delimStart, const char *delimEnd) {
-    Buffer *buffer = getBufferOrReceiveBuffer(handle);
+/**
+ * Fills the GM-string outstr with the following bytes of the given ReadWritable and then skips the read position of forward
+ * by as many bytes as the "skip"-parameter is long
+ */
+DLLEXPORT double _fnet_hidden_read_binary_string(double handle, char *outstr, const char *skip) {
+	MutexLock lock(*apiMutex);
+	Buffer *buffer = getBufferOrReceiveBuffer(handle);
+	if (buffer) {
+		auto result = buffer->read(reinterpret_cast<uint8_t*>(outstr), GM8_STRLEN(outstr));
+		buffer->setReadpos(buffer->getReadpos() + GM8_STRLEN(skip));
+		return result;
+	}
+
+    return 0;
+}
+
+static double bytesBeforeDelimiter(Buffer *buffer, const char *delimStart, const char *delimEnd) {
 	if(buffer) {
         const char* bufStart = reinterpret_cast<const char*>(buffer->getData());
         const char* bufReadPtr = bufStart + buffer->getReadpos();
@@ -558,14 +586,30 @@ static const char *readDelimitedString(double handle, const char *delimStart, co
 
         const char* delimInBuf = std::search(bufReadPtr, bufEnd, delimStart, delimEnd);
         if(delimInBuf != bufEnd) {
-            const char *result = replaceStringReturnBuffer(std::string(bufReadPtr, delimInBuf));
-            size_t delimLen = delimEnd-delimStart;
-            buffer->setReadpos(delimInBuf + delimLen - bufStart);
-            return result;
+            return delimInBuf-bufReadPtr;
         }
 	}
 
-	return "";
+	return -1;
+}
+
+DLLEXPORT double _fnet_hidden_bytes_before_delimiter(double handle, const char *needle) {
+    MutexLock lock(*apiMutex);
+    Buffer *buffer = getBufferOrReceiveBuffer(handle);
+    return bytesBeforeDelimiter(buffer, needle, needle+GM8_STRLEN(needle));
+}
+
+static const char *readDelimitedString(double handle, const char *delimStart, const char *delimEnd) {
+    Buffer *buffer = getBufferOrReceiveBuffer(handle);
+    double length = bytesBeforeDelimiter(buffer, delimStart, delimEnd);
+    if(length >= 0) {
+        const char *result = replaceStringReturnBuffer(buffer->readString(length));
+        size_t delimLen = delimEnd-delimStart;
+        buffer->setReadpos(buffer->getReadpos() + delimLen);
+        return result;
+    }
+
+    return "";
 }
 
 DLLEXPORT const char *_fnet_hidden_read_delimited_string(double handle, const char *delimiter) {
