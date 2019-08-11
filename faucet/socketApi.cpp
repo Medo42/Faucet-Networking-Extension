@@ -299,7 +299,10 @@ DLLEXPORT double write_string(double handle, const char *str) {
 	return 0;
 }
 
-DLLEXPORT double write_binary_string(double handle, const char *str) {
+/**
+ * DO NOT pass the empty string for str, the length prefix of that is broken in GM8!
+ */
+DLLEXPORT double _fnet_hidden_write_binary_string(double handle, const char *str) {
 	MutexLock lock(*apiMutex);
 	auto writable = handles.find<ReadWritable> (handle);
 	if (writable) {
@@ -563,16 +566,28 @@ DLLEXPORT const char *read_string(double handle, double len) {
 }
 
 /**
- * Fills the GM-string outstr with the following bytes of the given ReadWritable and then skips the read position of forward
- * by as many bytes as the "skip"-parameter is long
+ * Fills the GM-string outstr with the following bytes of the given ReadWritable
+ * DO NOT pass the empty string for outstr, the length prefix of that is broken in GM8!
  */
-DLLEXPORT double _fnet_hidden_read_binary_string(double handle, char *outstr, const char *skip) {
+DLLEXPORT double _fnet_hidden_read_binary_string(double handle, char *outstr) {
 	MutexLock lock(*apiMutex);
 	Buffer *buffer = getBufferOrReceiveBuffer(handle);
 	if (buffer) {
-		auto result = buffer->read(reinterpret_cast<uint8_t*>(outstr), GM8_STRLEN(outstr));
-		buffer->setReadpos(buffer->getReadpos() + GM8_STRLEN(skip));
-		return result;
+		return buffer->read(reinterpret_cast<uint8_t*>(outstr), GM8_STRLEN(outstr));
+	}
+
+    return 0;
+}
+
+/**
+ * Skips as many bytes of the given ReadWritable as the length of skip.
+ * DO NOT pass the empty string for skip, the length prefix of that is broken in GM8!
+ */
+DLLEXPORT double _fnet_hidden_skip_length_of_string(double handle, char *skip) {
+    MutexLock lock(*apiMutex);
+	Buffer *buffer = getBufferOrReceiveBuffer(handle);
+	if (buffer) {
+        buffer->setReadpos(buffer->getReadpos() + GM8_STRLEN(skip));
 	}
 
     return 0;

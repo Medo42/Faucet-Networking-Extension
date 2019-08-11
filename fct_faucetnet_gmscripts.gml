@@ -1,17 +1,26 @@
 #define read_binary_string
 var result;
 result = min(fct_buffer_bytes_left(argument0), argument1) * " ";
-_fnet_hidden_read_binary_string(argument0, result, "");
+if (result != "")
+	_fnet_hidden_read_binary_string(argument0, result);
 return result;
 
 #define read_delimited_binary_string
 var length, result;
+if (argument1 == "")
+	return "";
 length = _fnet_hidden_bytes_before_delimiter(argument0, argument1);
 if (length < 0)
 	return -1;
 result = length * " ";
-_fnet_hidden_read_binary_string(argument0, result, argument1);
+if (result != "")
+	_fnet_hidden_read_binary_string(argument0, result);
+_fnet_hidden_skip_length_of_string(argument0, argument1);
 return result;
+
+#define write_binary_string
+if (argument1 != "")
+	_fnet_hidden_write_binary_string(argument0, argument1);
 
 #define read_delimited_string
 var bytesleft, result;

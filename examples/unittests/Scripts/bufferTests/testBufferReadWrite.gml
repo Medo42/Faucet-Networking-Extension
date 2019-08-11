@@ -197,6 +197,7 @@ write_binary_string(buffer1, "Hallo"+chr(0)+"Welt"+chr(0)+"!");
 assertEquals("Hallo", read_delimited_binary_string(buffer1, chr(0)));
 assertEquals("Welt", read_delimited_binary_string(buffer1, chr(0)));
 assertEquals(-1, read_delimited_binary_string(buffer1, chr(0)));
+assertEquals("", read_delimited_binary_string(buffer1, ""), "read_delimited_binary_string with empty delimiter should return an empty string");
 assertEquals("!", read_binary_string(buffer1, 100));
 
 write_binary_string(buffer1, "Hallo"+chr(0)+"Welt"+chr(0)+"!");
