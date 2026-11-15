@@ -1,6 +1,6 @@
 #pragma once
 
-#include <faucet/Socket.hpp>
+#include <faucet/tcp/StreamSocket.hpp>
 #include <faucet/ReadWritable.hpp>
 #include <faucet/Asio.hpp>
 #include <faucet/tcp/SendBuffer.hpp>
@@ -16,7 +16,7 @@
 #include <string>
 #include <memory>
 
-class TcpSocket: public Socket,
+class TcpSocket: public StreamSocket,
 		public std::enable_shared_from_this<TcpSocket>,
 		boost::noncopyable {
 	friend class ConnectionState;
@@ -44,31 +44,31 @@ public:
 	virtual uint16_t getRemotePort();
 	virtual uint16_t getLocalPort();
 
-	void send();
+	virtual void send();
 	/**
 	 * Try to receive the given number of bytes into the internal receive buffer.
 	 *
 	 * Returns true on success, false on failure.
 	 * All data previously read into the internal buffer is discarded.
 	 */
-	bool receive(size_t ammount);
+	virtual bool receive(size_t ammount);
 
 	/**
 	 * Read as much data as is available.
 	 */
-	size_t receive();
+	virtual size_t receive();
 
 	/**
 	 * True if the connection has been closed in the receiving direction.
 	 */
-	bool isEof();
+	virtual bool isEof();
 
-	void disconnectAbortive();
+	virtual void disconnectAbortive();
 
     /**
      * Enable / disable the TCP_NODELAY option (= disable / enable Nagle's algorithm)
      */
-    bool setNoDelay(bool noDelay);
+    virtual bool setNoDelay(bool noDelay);
 
 	/**
 	 * Create a new socket representing a connection to the
