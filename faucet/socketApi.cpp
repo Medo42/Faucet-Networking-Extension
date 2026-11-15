@@ -2,6 +2,7 @@
 #include <faucet/HandleMap.hpp>
 #include <faucet/tcp/TcpSocket.hpp>
 #include <faucet/tcp/StreamSocket.hpp>
+#include <faucet/tls/TlsSocket.hpp>
 #include <faucet/tcp/CombinedTcpAcceptor.hpp>
 #include <faucet/Buffer.hpp>
 #include <faucet/udp/UdpSocket.hpp>
@@ -82,6 +83,31 @@ DLLEXPORT double tcp_connect(char *host, double port) {
 		return handles.allocate(TcpSocket::error(error.message()));
 	} else {
 		return handles.allocate(TcpSocket::connectTo(host, intPort));
+	}
+}
+
+/**
+ * Like tcp_connect, but the connection is secured with TLS. The handshake is
+ * performed transparently, and the server's certificate is validated against
+ * the given host name using the operating system's trust store.
+ *
+ * The returned socket can be used with all the same functions as a socket
+ * created with tcp_connect.
+ */
+DLLEXPORT double tls_connect(char *host, double port) {
+	MutexLock lock(*apiMutex);
+	uint16_t intPort;
+	try {
+		intPort = numeric_cast<uint16_t> (port);
+	} catch (bad_numeric_cast &e) {
+		intPort = 0;
+	}
+	if (intPort == 0) {
+		boost::system::error_code error = boost::asio::error::make_error_code(
+				boost::asio::error::invalid_argument);
+		return handles.allocate(TcpSocket::error(error.message()));
+	} else {
+		return handles.allocate(TlsSocket::connectTo(host, intPort));
 	}
 }
 

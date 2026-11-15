@@ -38,7 +38,7 @@ rules needed to build Faucet Net from scratch:
   and then linked as a dll.
 - As include directories, you need to set up the Boost include dir as well as the project
   directory itself (i.e. the directory containing the "faucet" source directory)
-- Link statically with the mswsock, ws2_32 and iphlpapi libraries, as well as the boost system
+- Link statically with the mswsock, ws2_32, iphlpapi, secur32 and crypt32 libraries, as well as the boost system
   library and Boost threads. Use the multithreaded static (mt-s) variants for both. Also,
   statically link with the multithreading-safe standard library.
 - For compiling with mingw, make sure to add the -mthreads switch to both the compiler and
