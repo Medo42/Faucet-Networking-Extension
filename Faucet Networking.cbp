@@ -58,6 +58,8 @@
 			<Add library="mswsock" />
 			<Add library="ws2_32" />
 			<Add library="iphlpapi" />
+			<Add library="secur32" />
+			<Add library="crypt32" />
 			<Add library="boost_system-mgw48-mt-s-1_55" />
 			<Add library="boost_thread-mgw48-mt-s-1_55" />
 			<Add directory="C:/Programmieren/boost_1_55_0/stage_11/lib" />
@@ -86,6 +88,7 @@
 		<Unit filename="faucet/tcp/CombinedTcpAcceptor.cpp" />
 		<Unit filename="faucet/tcp/CombinedTcpAcceptor.hpp" />
 		<Unit filename="faucet/tcp/SendBuffer.hpp" />
+		<Unit filename="faucet/tcp/StreamSocket.hpp" />
 		<Unit filename="faucet/tcp/TcpAcceptor.cpp" />
 		<Unit filename="faucet/tcp/TcpAcceptor.hpp" />
 		<Unit filename="faucet/tcp/TcpSocket.cpp" />
@@ -98,6 +101,10 @@
 		<Unit filename="faucet/tcp/connectionStates/TcpConnected.hpp" />
 		<Unit filename="faucet/tcp/connectionStates/TcpConnecting.cpp" />
 		<Unit filename="faucet/tcp/connectionStates/TcpConnecting.hpp" />
+		<Unit filename="faucet/tls/SchannelSession.cpp" />
+		<Unit filename="faucet/tls/SchannelSession.hpp" />
+		<Unit filename="faucet/tls/TlsSocket.cpp" />
+		<Unit filename="faucet/tls/TlsSocket.hpp" />
 		<Unit filename="faucet/udp/DatagramQueue.hpp" />
 		<Unit filename="faucet/udp/UdpSocket.cpp" />
 		<Unit filename="faucet/udp/UdpSocket.hpp" />

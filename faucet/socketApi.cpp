@@ -1,6 +1,8 @@
 #include <faucet/Asio.hpp>
 #include <faucet/HandleMap.hpp>
 #include <faucet/tcp/TcpSocket.hpp>
+#include <faucet/tcp/StreamSocket.hpp>
+#include <faucet/tls/TlsSocket.hpp>
 #include <faucet/tcp/CombinedTcpAcceptor.hpp>
 #include <faucet/Buffer.hpp>
 #include <faucet/udp/UdpSocket.hpp>
@@ -84,9 +86,34 @@ DLLEXPORT double tcp_connect(char *host, double port) {
 	}
 }
 
+/**
+ * Like tcp_connect, but the connection is secured with TLS. The handshake is
+ * performed transparently, and the server's certificate is validated against
+ * the given host name using the operating system's trust store.
+ *
+ * The returned socket can be used with all the same functions as a socket
+ * created with tcp_connect.
+ */
+DLLEXPORT double tls_connect(char *host, double port) {
+	MutexLock lock(*apiMutex);
+	uint16_t intPort;
+	try {
+		intPort = numeric_cast<uint16_t> (port);
+	} catch (bad_numeric_cast &e) {
+		intPort = 0;
+	}
+	if (intPort == 0) {
+		boost::system::error_code error = boost::asio::error::make_error_code(
+				boost::asio::error::invalid_argument);
+		return handles.allocate(TcpSocket::error(error.message()));
+	} else {
+		return handles.allocate(TlsSocket::connectTo(host, intPort));
+	}
+}
+
 DLLEXPORT double tcp_set_nodelay(double socketHandle, double nodelay) {
     MutexLock lock(*apiMutex);
-    auto socket = handles.find<TcpSocket> (socketHandle);
+    auto socket = handles.find<StreamSocket> (socketHandle);
     return (socket && socket->setNoDelay(nodelay >= 0.5)) ? 1 : -1;
 }
 
@@ -104,7 +131,7 @@ DLLEXPORT double udp_bind(double port) {
 // TODO: rename to tcp_connecting in 2.0
 DLLEXPORT double socket_connecting(double socketHandle) {
 	MutexLock lock(*apiMutex);
-	auto socket = handles.find<TcpSocket> (socketHandle);
+	auto socket = handles.find<StreamSocket> (socketHandle);
 	if (socket) {
 		return socket->isConnecting();
 	} else {
@@ -186,7 +213,7 @@ DLLEXPORT double socket_handle_io() {
 
 static void destroySocket(double handle, bool hard) {
 	MutexLock lock(*apiMutex);
-	auto tcpSocket = handles.find<TcpSocket> (handle);
+	auto tcpSocket = handles.find<StreamSocket> (handle);
 	if (tcpSocket) {
 		if (hard) {
 			tcpSocket->disconnectAbortive();
@@ -378,7 +405,7 @@ DLLEXPORT double write_base64(double destHandle, const char *hexStr) {
 
 DLLEXPORT double tcp_receive(double socketHandle, double size) {
 	MutexLock lock(*apiMutex);
-	auto socket = handles.find<TcpSocket> (socketHandle);
+	auto socket = handles.find<StreamSocket> (socketHandle);
 	if (socket) {
 		size_t intSize;
 		try {
@@ -394,7 +421,7 @@ DLLEXPORT double tcp_receive(double socketHandle, double size) {
 
 DLLEXPORT double tcp_receive_available(double socketHandle) {
 	MutexLock lock(*apiMutex);
-	auto socket = handles.find<TcpSocket> (socketHandle);
+	auto socket = handles.find<StreamSocket> (socketHandle);
 	if (socket) {
 		return socket->receive();
 	} else {
@@ -404,7 +431,7 @@ DLLEXPORT double tcp_receive_available(double socketHandle) {
 
 DLLEXPORT double tcp_eof(double socketHandle) {
 	MutexLock lock(*apiMutex);
-	auto socket = handles.find<TcpSocket> (socketHandle);
+	auto socket = handles.find<StreamSocket> (socketHandle);
 	if (socket) {
 		return socket->isEof();
 	} else {
@@ -415,7 +442,7 @@ DLLEXPORT double tcp_eof(double socketHandle) {
 // TODO rename to tcp_send in 2.0
 DLLEXPORT double socket_send(double socketHandle) {
 	MutexLock lock(*apiMutex);
-	auto socket = handles.find<TcpSocket> (socketHandle);
+	auto socket = handles.find<StreamSocket> (socketHandle);
 	if (socket) {
 		socket->send();
 	}
